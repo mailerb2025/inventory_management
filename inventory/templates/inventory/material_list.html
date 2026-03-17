@@ -3,6 +3,115 @@
 
 {% block title %}Materials Inventory{% endblock %}
 
+{% block extra_css %}
+<style>
+    /* Grid View Styles */
+    .materials-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+        gap: 1.5rem;
+        padding: 1rem;
+    }
+
+    .material-card {
+        border: 1px solid #e0e0e0;
+        border-radius: 0.5rem;
+        overflow: hidden;
+        transition: all 0.3s ease;
+        background: white;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .material-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+    }
+
+    .card-header {
+        padding: 1rem;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        position: relative;
+    }
+
+    .card-header .status-badge {
+        position: absolute;
+        top: 0.5rem;
+        right: 0.5rem;
+    }
+
+    .card-body {
+        padding: 1rem;
+    }
+
+    .card-footer {
+        padding: 1rem;
+        background: #f8f9fa;
+        border-top: 1px solid #e0e0e0;
+    }
+
+    .stock-indicator {
+        display: flex;
+        align-items: center;
+        margin: 0.5rem 0;
+    }
+
+    .stock-bar {
+        flex-grow: 1;
+        height: 8px;
+        background: #e0e0e0;
+        border-radius: 4px;
+        overflow: hidden;
+        margin-left: 0.5rem;
+    }
+
+    .stock-fill {
+        height: 100%;
+        transition: width 0.3s ease;
+    }
+
+    .stock-fill.low { background: #dc3545; }
+    .stock-fill.normal { background: #28a745; }
+    .stock-fill.excess { background: #ffc107; }
+
+    .view-toggle {
+        display: inline-flex;
+        border: 1px solid #dee2e6;
+        border-radius: 0.375rem;
+        overflow: hidden;
+    }
+
+    .view-toggle .btn {
+        border: none;
+        border-radius: 0;
+        padding: 0.5rem 1rem;
+    }
+
+    .view-toggle .btn.active {
+        background: #007bff;
+        color: white;
+    }
+
+    /* Table view enhancements */
+    .table-view .material-image {
+        width: 50px;
+        height: 50px;
+        object-fit: cover;
+        border-radius: 0.375rem;
+    }
+
+    .table-view .stock-bar-container {
+        min-width: 150px;
+    }
+
+    @media (max-width: 768px) {
+        .materials-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="content-container">
     <!-- Header -->
@@ -12,6 +121,18 @@
             <p class="text-muted mb-0">Manage and track all materials in the system</p>
         </div>
         <div class="mt-3 mt-sm-0">
+            <!-- View Toggle -->
+            <div class="view-toggle me-2">
+                <button type="button" class="btn btn-outline-primary {% if request.GET.view != 'grid' %}active{% endif %}"
+                        onclick="setView('table')" id="tableViewBtn">
+                    <i class="fas fa-table"></i> Table
+                </button>
+                <button type="button" class="btn btn-outline-primary {% if request.GET.view == 'grid' %}active{% endif %}"
+                        onclick="setView('grid')" id="gridViewBtn">
+                    <i class="fas fa-th-large"></i> Grid
+                </button>
+            </div>
+
             <div class="btn-group">
                 <button type="button" class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown">
                     <i class="fas fa-download me-2"></i>Export
@@ -40,7 +161,9 @@
     <!-- Filters -->
     <div class="card mb-4">
         <div class="card-body">
-            <form method="get" class="row g-3">
+            <form method="get" class="row g-3" id="filterForm">
+                <input type="hidden" name="view" id="viewInput" value="{{ request.GET.view|default:'table' }}">
+
                 <div class="col-md-4">
                     <label class="form-label">Search</label>
                     <input type="text" class="form-control" name="search"
@@ -84,75 +207,209 @@
         </div>
     </div>
 
-    <!-- Materials Table -->
+    <!-- Materials Display -->
     <div class="card">
-        <div class="table-responsive">
-            <table class="table table-hover mb-0">
-                <thead>
-                    <tr>
-                        <th>Code</th>
-                        <th>Material Name</th>
-                        <th>Category</th>
-                        <th>Unit</th>
-                        <th>Current Stock</th>
-                        <th>Min/Max</th>
-                        <th>Status</th>
-                        <th>Location</th>
-                        <th class="text-end">Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
+        <div class="card-body">
+            {% if request.GET.view == 'grid' %}
+                <!-- Grid View -->
+                <div class="materials-grid">
                     {% for material in page_obj %}
-                    <tr>
-                        <td><span class="fw-semibold">{{ material.material_code }}</span></td>
-                        <td>{{ material.name }}</td>
-                        <td>{{ material.category.name }}</td>
-                        <td>{{ material.unit }}</td>
-                        <td>
-                            <span class="fw-semibold {% if material.current_stock <= material.minimum_stock %}text-danger
+                    <div class="material-card">
+                        <div class="card-header">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <h5 class="mb-1 text-white">{{ material.name }}</h5>
+                                    <small class="text-white-50">{{ material.material_code }}</small>
+                                </div>
+                                <span class="badge bg-{{ material.get_status_color }} status-badge">
+                                    {{ material.get_status_display_name }}
+                                </span>
+                            </div>
+                        </div>
+
+                        <div class="card-body">
+                            {% if material.image %}
+                            <div class="text-center mb-3">
+                                <img src="{{ material.image.url }}" alt="{{ material.name }}"
+                                     class="img-fluid rounded" style="max-height: 150px; object-fit: contain;">
+                            </div>
+                            {% endif %}
+
+                            <div class="mb-2">
+                                <i class="fas fa-folder text-primary me-2"></i>
+                                <span>{{ material.category.name }}</span>
+                            </div>
+
+                            <div class="mb-2">
+                                <i class="fas fa-cubes text-info me-2"></i>
+                                <span class="fw-bold {% if material.current_stock <= material.minimum_stock %}text-danger
                                                      {% elif material.current_stock >= material.maximum_stock %}text-warning
                                                      {% else %}text-success{% endif %}">
-                                {{ material.current_stock }}
-                            </span>
-                        </td>
-                        <td>
-                            <small class="text-muted">{{ material.minimum_stock }}/{{ material.maximum_stock }}</small>
-                        </td>
-                        <td>
-                            <span class="badge badge-{{ material.get_status_color }}">
-                                {{ material.get_status_display_name }}
-                            </span>
-                        </td>
-                        <td>{{ material.location|default:"-" }}</td>
-                        <td class="text-end">
-                            <div class="btn-group btn-group-sm">
-                                <a href="{% url 'inventory:material_detail' material.id %}" class="btn btn-outline-info" title="View">
-                                    <i class="fas fa-eye"></i>
+                                    {{ material.current_stock }} {{ material.unit }}
+                                </span>
+                            </div>
+
+                            <div class="stock-indicator">
+                                <small class="text-muted">Stock Level</small>
+                                <div class="stock-bar">
+                                    <div class="stock-fill {{ material.get_display_status }}"
+                                         style="width: {{ material.stock_percentage }}%"></div>
+                                </div>
+                            </div>
+
+                            <div class="row mt-3">
+                                <div class="col-6">
+                                    <small class="text-muted d-block">Min Stock</small>
+                                    <span class="fw-semibold">{{ material.minimum_stock }}</span>
+                                </div>
+                                <div class="col-6">
+                                    <small class="text-muted d-block">Max Stock</small>
+                                    <span class="fw-semibold">{{ material.maximum_stock }}</span>
+                                </div>
+                            </div>
+
+                            {% if material.location %}
+                            <div class="mt-2">
+                                <i class="fas fa-map-marker-alt text-secondary me-2"></i>
+                                <small>{{ material.location }}</small>
+                            </div>
+                            {% endif %}
+
+                            {% if material.has_override %}
+                            <div class="mt-2">
+                                <span class="badge bg-info">
+                                    <i class="fas fa-pencil-alt me-1"></i>Overridden
+                                </span>
+                            </div>
+                            {% endif %}
+
+                            {% if material.current_stock <= material.reorder_point %}
+                            <div class="alert alert-warning mt-2 mb-0 py-2">
+                                <small><i class="fas fa-exclamation-triangle me-1"></i>Reorder needed</small>
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <div class="card-footer">
+                            <div class="btn-group w-100">
+                                <a href="{% url 'inventory:material_detail' material.id %}" class="btn btn-outline-info btn-sm">
+                                    <i class="fas fa-eye"></i> View
                                 </a>
-                                <a href="{% url 'inventory:material_update' material.id %}" class="btn btn-outline-primary" title="Edit">
-                                    <i class="fas fa-edit"></i>
+                                <a href="{% url 'inventory:material_update' material.id %}" class="btn btn-outline-primary btn-sm">
+                                    <i class="fas fa-edit"></i> Edit
                                 </a>
-                                <button type="button" class="btn btn-outline-danger" title="Delete"
+                                <button type="button" class="btn btn-outline-danger btn-sm"
                                         onclick="confirmDelete('{{ material.id }}', '{{ material.name }}')">
                                     <i class="fas fa-trash"></i>
                                 </button>
                             </div>
-                        </td>
-                    </tr>
+                        </div>
+                    </div>
                     {% empty %}
-                    <tr>
-                        <td colspan="9" class="text-center py-5">
-                            <i class="fas fa-box-open fa-4x text-muted mb-3"></i>
-                            <h5 class="text-muted">No materials found</h5>
-                            <p class="text-muted mb-3">Get started by adding your first material</p>
-                            <a href="{% url 'inventory:material_create' %}" class="btn btn-primary">
-                                <i class="fas fa-plus-circle me-2"></i>Add Material
-                            </a>
-                        </td>
-                    </tr>
+                    <div class="text-center py-5" style="grid-column: 1/-1;">
+                        <i class="fas fa-box-open fa-4x text-muted mb-3"></i>
+                        <h5 class="text-muted">No materials found</h5>
+                        <p class="text-muted mb-3">Get started by adding your first material</p>
+                        <a href="{% url 'inventory:material_create' %}" class="btn btn-primary">
+                            <i class="fas fa-plus-circle me-2"></i>Add Material
+                        </a>
+                    </div>
                     {% endfor %}
-                </tbody>
-            </table>
+                </div>
+            {% else %}
+                <!-- Table View -->
+                <div class="table-responsive">
+                    <table class="table table-hover mb-0">
+                        <thead>
+                            <tr>
+                                <th>Image</th>
+                                <th>Code</th>
+                                <th>Material Name</th>
+                                <th>Category</th>
+                                <th>Unit</th>
+                                <th>Current Stock</th>
+                                <th>Min/Max</th>
+                                <th>Stock Level</th>
+                                <th>Status</th>
+                                <th>Location</th>
+                                <th class="text-end">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for material in page_obj %}
+                            <tr>
+                                <td>
+                                    {% if material.image %}
+                                    <img src="{{ material.image.url }}" alt="{{ material.name }}"
+                                         class="material-image">
+                                    {% else %}
+                                    <div class="material-image bg-light d-flex align-items-center justify-content-center">
+                                        <i class="fas fa-image text-muted"></i>
+                                    </div>
+                                    {% endif %}
+                                </td>
+                                <td><span class="fw-semibold">{{ material.material_code }}</span></td>
+                                <td>{{ material.name }}</td>
+                                <td>{{ material.category.name }}</td>
+                                <td>{{ material.unit }}</td>
+                                <td>
+                                    <span class="fw-semibold {% if material.current_stock <= material.minimum_stock %}text-danger
+                                                             {% elif material.current_stock >= material.maximum_stock %}text-warning
+                                                             {% else %}text-success{% endif %}">
+                                        {{ material.current_stock }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <small class="text-muted">{{ material.minimum_stock }}/{{ material.maximum_stock }}</small>
+                                </td>
+                                <td class="stock-bar-container">
+                                    <div class="stock-indicator mb-0">
+                                        <div class="stock-bar">
+                                            <div class="stock-fill {{ material.get_display_status }}"
+                                                 style="width: {{ material.stock_percentage }}%"></div>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <span class="badge badge-{{ material.get_status_color }}">
+                                        {{ material.get_status_display_name }}
+                                    </span>
+                                    {% if material.has_override %}
+                                    <i class="fas fa-pencil-alt ms-1 text-info" title="Manually overridden"></i>
+                                    {% endif %}
+                                </td>
+                                <td>{{ material.location|default:"-" }}</td>
+                                <td class="text-end">
+                                    <div class="btn-group btn-group-sm">
+                                        <a href="{% url 'inventory:material_detail' material.id %}" class="btn btn-outline-info" title="View">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                        <a href="{% url 'inventory:material_update' material.id %}" class="btn btn-outline-primary" title="Edit">
+                                            <i class="fas fa-edit"></i>
+                                        </a>
+                                        <button type="button" class="btn btn-outline-danger" title="Delete"
+                                                onclick="confirmDelete('{{ material.id }}', '{{ material.name }}')">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="11" class="text-center py-5">
+                                    <i class="fas fa-box-open fa-4x text-muted mb-3"></i>
+                                    <h5 class="text-muted">No materials found</h5>
+                                    <p class="text-muted mb-3">Get started by adding your first material</p>
+                                    <a href="{% url 'inventory:material_create' %}" class="btn btn-primary">
+                                        <i class="fas fa-plus-circle me-2"></i>Add Material
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% endif %}
         </div>
 
         <!-- Pagination -->
@@ -162,7 +419,7 @@
                 <ul class="pagination justify-content-center mb-0">
                     {% if page_obj.has_previous %}
                     <li class="page-item">
-                        <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.category %}&category={{ request.GET.category }}{% endif %}{% if request.GET.stock_status %}&stock_status={{ request.GET.stock_status }}{% endif %}">
+                        <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.category %}&category={{ request.GET.category }}{% endif %}{% if request.GET.stock_status %}&stock_status={{ request.GET.stock_status }}{% endif %}{% if request.GET.view %}&view={{ request.GET.view }}{% endif %}">
                             <i class="fas fa-chevron-left"></i>
                         </a>
                     </li>
@@ -177,14 +434,14 @@
                         <li class="page-item active"><span class="page-link">{{ num }}</span></li>
                         {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
                         <li class="page-item">
-                            <a class="page-link" href="?page={{ num }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.category %}&category={{ request.GET.category }}{% endif %}{% if request.GET.stock_status %}&stock_status={{ request.GET.stock_status }}{% endif %}">{{ num }}</a>
+                            <a class="page-link" href="?page={{ num }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.category %}&category={{ request.GET.category }}{% endif %}{% if request.GET.stock_status %}&stock_status={{ request.GET.stock_status }}{% endif %}{% if request.GET.view %}&view={{ request.GET.view }}{% endif %}">{{ num }}</a>
                         </li>
                         {% endif %}
                     {% endfor %}
 
                     {% if page_obj.has_next %}
                     <li class="page-item">
-                        <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.category %}&category={{ request.GET.category }}{% endif %}{% if request.GET.stock_status %}&stock_status={{ request.GET.stock_status }}{% endif %}">
+                        <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.category %}&category={{ request.GET.category }}{% endif %}{% if request.GET.stock_status %}&stock_status={{ request.GET.stock_status }}{% endif %}{% if request.GET.view %}&view={{ request.GET.view }}{% endif %}">
                             <i class="fas fa-chevron-right"></i>
                         </a>
                     </li>
@@ -231,6 +488,18 @@ function confirmDelete(materialId, materialName) {
     document.getElementById('deleteMaterialName').textContent = materialName;
     document.getElementById('deleteForm').action = `/inventory/material/${materialId}/delete/`;
     new bootstrap.Modal(document.getElementById('deleteModal')).show();
+}
+
+function setView(viewType) {
+    // Update view input in filter form
+    document.getElementById('viewInput').value = viewType;
+
+    // Update button active states
+    document.getElementById('tableViewBtn').classList.toggle('active', viewType === 'table');
+    document.getElementById('gridViewBtn').classList.toggle('active', viewType === 'grid');
+
+    // Submit the form to reload with new view
+    document.getElementById('filterForm').submit();
 }
 </script>
 {% endblock %}

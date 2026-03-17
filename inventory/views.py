@@ -51,11 +51,21 @@ def material_list(request):
         elif stock_status == 'excess':
             materials = materials.filter(current_stock__gte=F('maximum_stock'))
 
+    # Add calculated stock percentage to each material
+    for material in materials:
+        if material.maximum_stock > 0:
+            material.stock_percentage = min(100, int((material.current_stock / material.maximum_stock) * 100))
+        else:
+            material.stock_percentage = 0
+
     paginator = Paginator(materials, 20)
     page_number = request.GET.get('page')
     page_obj = paginator.get_page(page_number)
 
     categories = Category.objects.all()
+
+    # Get the view preference (default to 'table')
+    view_mode = request.GET.get('view', 'table')
 
     context = {
         'page_obj': page_obj,
@@ -63,6 +73,7 @@ def material_list(request):
         'search_query': search_query,
         'selected_category': category_id,
         'selected_status': stock_status,
+        'view_mode': view_mode,
     }
     return render(request, 'inventory/material_list.html', context)
 
