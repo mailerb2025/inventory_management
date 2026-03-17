@@ -1,0 +1,355 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="content-container">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h3 class="mb-1">{{ title }}</h3>
+            <p class="text-muted mb-0">{% if is_editing %}Edit user information{% else %}Create a new user account{% endif %}</p>
+        </div>
+        <a href="{% url 'accounts:user_list' %}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left me-2"></i>Back to Users
+        </a>
+    </div>
+
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-body">
+                    {% if is_creating %}
+                    <div class="alert alert-info mb-4">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <strong>Creating new user:</strong> Fill in all fields including password.
+                    </div>
+                    {% endif %}
+
+                    <form method="post" enctype="multipart/form-data" id="userForm">
+                        {% csrf_token %}
+
+                        <!-- Account Information -->
+                        <h6 class="mb-3">Account Information</h6>
+
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Username</label>
+                                <input type="text" name="username" class="form-control {% if form.username.errors %}is-invalid{% endif %}"
+                                       value="{{ form.username.value|default:'' }}"
+                                       {% if is_editing %}readonly{% endif %} required>
+                                {% if is_editing %}
+                                <div class="form-text">Username cannot be changed</div>
+                                {% else %}
+                                <div class="form-text">Choose a unique username</div>
+                                {% endif %}
+                                {% if form.username.errors %}
+                                <div class="invalid-feedback">{{ form.username.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Email</label>
+                                <input type="email" name="email" class="form-control {% if form.email.errors %}is-invalid{% endif %}"
+                                       value="{{ form.email.value|default:'' }}" required>
+                                {% if form.email.errors %}
+                                <div class="invalid-feedback">{{ form.email.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">First Name</label>
+                                <input type="text" name="first_name" class="form-control {% if form.first_name.errors %}is-invalid{% endif %}"
+                                       value="{{ form.first_name.value|default:'' }}" required>
+                                {% if form.first_name.errors %}
+                                <div class="invalid-feedback">{{ form.first_name.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Last Name</label>
+                                <input type="text" name="last_name" class="form-control {% if form.last_name.errors %}is-invalid{% endif %}"
+                                       value="{{ form.last_name.value|default:'' }}" required>
+                                {% if form.last_name.errors %}
+                                <div class="invalid-feedback">{{ form.last_name.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        {% if is_creating %}
+                        <!-- Password fields for new user -->
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-6">
+                                <label class="form-label">Password</label>
+                                <input type="password" name="password1" class="form-control {% if form.password1.errors %}is-invalid{% endif %}"
+                                       id="password1" required>
+                                <div class="form-text">Password must be at least 8 characters</div>
+                                {% if form.password1.errors %}
+                                <div class="invalid-feedback">{{ form.password1.errors.0 }}</div>
+                                {% endif %}
+                                <div class="progress mt-2" style="height: 5px;" id="passwordStrength">
+                                    <div class="progress-bar" role="progressbar" style="width: 0%;"></div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Confirm Password</label>
+                                <input type="password" name="password2" class="form-control {% if form.password2.errors %}is-invalid{% endif %}"
+                                       id="password2" required>
+                                {% if form.password2.errors %}
+                                <div class="invalid-feedback">{{ form.password2.errors.0 }}</div>
+                                {% endif %}
+                                <div id="passwordMatch" class="form-text text-success"></div>
+                            </div>
+                        </div>
+                        {% else %}
+                        <!-- For existing users, show active checkbox -->
+                        <div class="mb-4">
+                            <div class="form-check form-switch">
+                                <input type="checkbox" name="is_active" class="form-check-input" id="isActive"
+                                       {% if form.is_active.value %}checked{% endif %}>
+                                <label class="form-check-label" for="isActive">Active Account</label>
+                            </div>
+                            <div class="form-text">Uncheck to deactivate this user account</div>
+                        </div>
+                        {% endif %}
+
+                        <hr class="my-4">
+
+                        <!-- Profile Information -->
+                        <h6 class="mb-3">Profile Information</h6>
+
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Role</label>
+                                <select name="role" class="form-select {% if profile_form.role.errors %}is-invalid{% endif %}">
+                                    <option value="">Select Role</option>
+                                    {% for role in profile_form.role.field.queryset %}
+                                    <option value="{{ role.id }}" {% if profile_form.role.value == role.id %}selected{% endif %}>
+                                        {{ role.get_name_display }}
+                                    </option>
+                                    {% endfor %}
+                                </select>
+                                {% if profile_form.role.errors %}
+                                <div class="invalid-feedback">{{ profile_form.role.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Department</label>
+                                <input type="text" name="department" class="form-control {% if profile_form.department.errors %}is-invalid{% endif %}"
+                                       value="{{ profile_form.department.value|default:'' }}">
+                                {% if profile_form.department.errors %}
+                                <div class="invalid-feedback">{{ profile_form.department.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="row g-3 mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Phone Number</label>
+                                <input type="text" name="phone_number" class="form-control {% if profile_form.phone_number.errors %}is-invalid{% endif %}"
+                                       value="{{ profile_form.phone_number.value|default:'' }}">
+                                {% if profile_form.phone_number.errors %}
+                                <div class="invalid-feedback">{{ profile_form.phone_number.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Employee ID</label>
+                                <input type="text" name="employee_id" class="form-control {% if profile_form.employee_id.errors %}is-invalid{% endif %}"
+                                       value="{{ profile_form.employee_id.value|default:'' }}">
+                                {% if profile_form.employee_id.errors %}
+                                <div class="invalid-feedback">{{ profile_form.employee_id.errors.0 }}</div>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="form-label">Profile Picture</label>
+                            <input type="file" name="avatar" class="form-control {% if profile_form.avatar.errors %}is-invalid{% endif %}"
+                                   accept="image/*">
+                            {% if profile_form.avatar.errors %}
+                            <div class="invalid-feedback">{{ profile_form.avatar.errors.0 }}</div>
+                            {% endif %}
+                            {% if is_editing and user.profile.avatar %}
+                            <div class="mt-2">
+                                <img src="{{ user.profile.avatar.url }}" alt="Current avatar" class="rounded" width="50">
+                                <small class="text-muted ms-2">Current avatar</small>
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <hr class="my-4">
+
+                        <!-- Notification Preferences -->
+                        <h6 class="mb-3">Notification Preferences</h6>
+
+                        <div class="row g-3 mb-4">
+                            <div class="col-md-6">
+                                <div class="form-check">
+                                    <input type="checkbox" name="notification_email" class="form-check-input" id="notifyEmail"
+                                           {% if profile_form.notification_email.value %}checked{% endif %}>
+                                    <label class="form-check-label" for="notifyEmail">Email Notifications</label>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-check">
+                                    <input type="checkbox" name="notification_sms" class="form-check-input" id="notifySMS"
+                                           {% if profile_form.notification_sms.value %}checked{% endif %}>
+                                    <label class="form-check-label" for="notifySMS">SMS Notifications</label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <hr class="my-4">
+
+                        <div class="d-flex justify-content-between">
+                            <a href="{% url 'accounts:user_list' %}" class="btn btn-secondary">
+                                <i class="fas fa-times me-2"></i>Cancel
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save me-2"></i>Save User
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            {% if is_editing %}
+            <!-- Danger Zone for existing users -->
+            <div class="card mt-4 border-danger">
+                <div class="card-header bg-danger text-white">
+                    <h6 class="mb-0"><i class="fas fa-exclamation-triangle me-2"></i>Danger Zone</h6>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="mb-1">Reset Password</h6>
+                            <p class="text-muted small mb-0">Send password reset email to user</p>
+                        </div>
+                        <a href="{% url 'accounts:admin_reset_password' user.id %}" class="btn btn-warning">
+                            <i class="fas fa-key me-2"></i>Reset Password
+                        </a>
+                    </div>
+
+                    {% if user != request.user %}
+                    <hr class="my-3">
+
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="mb-1 text-danger">Delete User</h6>
+                            <p class="text-muted small mb-0">Permanently remove this user</p>
+                        </div>
+                        <button type="button" class="btn btn-danger" onclick="confirmUserDelete('{{ user.id }}', '{{ user.username }}')">
+                            <i class="fas fa-trash me-2"></i>Delete User
+                        </button>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteUserModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title"><i class="fas fa-exclamation-triangle me-2"></i>Confirm Delete</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete user <strong id="deleteUserName"></strong>?</p>
+                <p class="text-danger small">
+                    <i class="fas fa-exclamation-circle me-1"></i>
+                    This action cannot be undone. All data associated with this user will be affected.
+                </p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form id="deleteUserForm" method="post" action="">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger">Delete User</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    {% if is_creating %}
+    // Password strength checker
+    const password1 = document.getElementById('password1');
+    const password2 = document.getElementById('password2');
+    const strengthBar = document.querySelector('#passwordStrength .progress-bar');
+    const passwordMatch = document.getElementById('passwordMatch');
+
+    if (password1) {
+        password1.addEventListener('input', function() {
+            const value = this.value;
+            let strength = 0;
+
+            if (value.length >= 8) strength += 25;
+            if (value.match(/[a-z]/)) strength += 25;
+            if (value.match(/[A-Z]/)) strength += 25;
+            if (value.match(/[0-9]/) || value.match(/[^a-zA-Z0-9]/)) strength += 25;
+
+            strengthBar.style.width = strength + '%';
+            strengthBar.className = 'progress-bar ' +
+                (strength < 50 ? 'bg-danger' : strength < 75 ? 'bg-warning' : 'bg-success');
+
+            checkPasswordMatch();
+        });
+    }
+
+    if (password2) {
+        password2.addEventListener('input', checkPasswordMatch);
+    }
+
+    function checkPasswordMatch() {
+        if (password1.value && password2.value) {
+            if (password1.value === password2.value) {
+                passwordMatch.innerHTML = '<i class="fas fa-check-circle me-1"></i>Passwords match';
+                passwordMatch.className = 'form-text text-success';
+                password2.classList.remove('is-invalid');
+            } else {
+                passwordMatch.innerHTML = '<i class="fas fa-exclamation-circle me-1"></i>Passwords do not match';
+                passwordMatch.className = 'form-text text-danger';
+                password2.classList.add('is-invalid');
+            }
+        } else {
+            passwordMatch.innerHTML = '';
+        }
+    }
+    {% endif %}
+});
+
+function confirmUserDelete(userId, userName) {
+    document.getElementById('deleteUserName').textContent = userName;
+    document.getElementById('deleteUserForm').action = `/accounts/user/${userId}/delete/`;
+    new bootstrap.Modal(document.getElementById('deleteUserModal')).show();
+}
+</script>
+
+<style>
+.progress {
+    background-color: #e9ecef;
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.progress-bar {
+    transition: width 0.3s ease;
+}
+
+.form-check-input:checked {
+    background-color: var(--primary-600);
+    border-color: var(--primary-600);
+}
+
+.card.border-danger {
+    border-width: 2px;
+}
+</style>
+{% endblock %}

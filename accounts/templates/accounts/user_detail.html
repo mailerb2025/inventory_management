@@ -1,0 +1,255 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ user.username }} - User Details{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <div class="col-lg-4">
+            <!-- User Profile Card -->
+            <div class="card shadow mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="fas fa-user-circle me-2"></i>User Profile</h5>
+                </div>
+                <div class="card-body text-center">
+                    {% if user.profile.avatar %}
+                    <img src="{{ user.profile.avatar.url }}" alt="{{ user.username }}" 
+                         class="rounded-circle mb-3" width="120" height="120">
+                    {% else %}
+                    <div class="bg-secondary rounded-circle mx-auto mb-3 d-flex align-items-center justify-content-center" 
+                         style="width: 120px; height: 120px;">
+                        <i class="fas fa-user fa-4x text-white"></i>
+                    </div>
+                    {% endif %}
+                    
+                    <h4>{{ user.get_full_name|default:user.username }}</h4>
+                    <p class="text-muted">@{{ user.username }}</p>
+                    
+                    <div class="mb-3">
+                        {% if user.profile.role %}
+                        <span class="badge 
+                            {% if user.profile.role.name == 'admin' %}bg-danger
+                            {% elif user.profile.role.name == 'manager' %}bg-warning text-dark
+                            {% elif user.profile.role.name == 'staff' %}bg-info
+                            {% else %}bg-secondary{% endif %} fs-6">
+                            {{ user.profile.role.get_name_display }}
+                        </span>
+                        {% endif %}
+                        
+                        {% if user.is_active %}
+                        <span class="badge bg-success fs-6">Active</span>
+                        {% else %}
+                        <span class="badge bg-danger fs-6">Inactive</span>
+                        {% endif %}
+                        
+                        {% if user.is_superuser %}
+                        <span class="badge bg-dark fs-6">Superuser</span>
+                        {% endif %}
+                    </div>
+                    
+                    <hr>
+                    
+                    <div class="text-start">
+                        <h6>Contact Information</h6>
+                        <table class="table table-sm">
+                            <tr>
+                                <th>Email:</th>
+                                <td>{{ user.email }}</td>
+                            </tr>
+                            <tr>
+                                <th>Phone:</th>
+                                <td>{{ user.profile.phone_number|default:"-" }}</td>
+                            </tr>
+                            <tr>
+                                <th>Department:</th>
+                                <td>{{ user.profile.department|default:"-" }}</td>
+                            </tr>
+                            <tr>
+                                <th>Employee ID:</th>
+                                <td>{{ user.profile.employee_id|default:"-" }}</td>
+                            </tr>
+                        </table>
+                    </div>
+                    
+                    <hr>
+                    
+                    <div class="text-start">
+                        <h6>Account Information</h6>
+                        <table class="table table-sm">
+                            <tr>
+                                <th>Joined:</th>
+                                <td>{{ user.date_joined|date:"Y-m-d H:i" }}</td>
+                            </tr>
+                            <tr>
+                                <th>Last Login:</th>
+                                <td>{{ user.last_login|date:"Y-m-d H:i"|default:"Never" }}</td>
+                            </tr>
+                            <tr>
+                                <th>Login Count:</th>
+                                <td>{{ user.profile.login_count }}</td>
+                            </tr>
+                        </table>
+                    </div>
+                    
+                    <hr>
+                    
+                    <div class="d-grid gap-2">
+                        <a href="{% url 'accounts:user_update' user.id %}" class="btn btn-primary">
+                            <i class="fas fa-edit me-2"></i>Edit User
+                        </a>
+                        <a href="{% url 'accounts:admin_reset_password' user.id %}" class="btn btn-warning">
+                            <i class="fas fa-key me-2"></i>Reset Password
+                        </a>
+                        <a href="{% url 'accounts:user_toggle_active' user.id %}" class="btn btn-warning">
+                            <i class="fas fa-{% if user.is_active %}ban{% else %}check{% endif %} me-2"></i>
+                            {% if user.is_active %}Deactivate{% else %}Activate{% endif %} User
+                        </a>
+                        <a href="{% url 'accounts:user_list' %}" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left me-2"></i>Back to List
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-8">
+            <!-- Recent Activity -->
+            <div class="card shadow mb-4">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0"><i class="fas fa-history me-2"></i>Recent Activity</h5>
+                </div>
+                <div class="card-body">
+                    <ul class="nav nav-tabs" id="activityTab" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="transactions-tab" data-bs-toggle="tab" 
+                                    data-bs-target="#transactions" type="button" role="tab">
+                                Transactions ({{ recent_transactions|length }})
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="materials-tab" data-bs-toggle="tab" 
+                                    data-bs-target="#materials" type="button" role="tab">
+                                Materials ({{ recent_materials|length }})
+                            </button>
+                        </li>
+                    </ul>
+                    
+                    <div class="tab-content mt-3">
+                        <div class="tab-pane active" id="transactions" role="tabpanel">
+                            <div class="table-responsive">
+                                <table class="table table-sm">
+                                    <thead>
+                                        <tr>
+                                            <th>Date</th>
+                                            <th>Transaction #</th>
+                                            <th>Type</th>
+                                            <th>Reference</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for trans in recent_transactions %}
+                                        <tr>
+                                            <td>{{ trans.transaction_date|date:"Y-m-d H:i" }}</td>
+                                            <td>
+                                                <a href="{% url 'transactions:transaction_detail' trans.id %}">
+                                                    {{ trans.transaction_number }}
+                                                </a>
+                                            </td>
+                                            <td>
+                                                {% if trans.transaction_type == 'inbound' %}
+                                                <span class="badge bg-success">IN</span>
+                                                {% elif trans.transaction_type == 'outbound' %}
+                                                <span class="badge bg-danger">OUT</span>
+                                                {% else %}
+                                                <span class="badge bg-info">{{ trans.transaction_type }}</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>{{ trans.reference_number|default:"-" }}</td>
+                                        </tr>
+                                        {% empty %}
+                                        <tr>
+                                            <td colspan="4" class="text-center">No transactions</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        
+                        <div class="tab-pane" id="materials" role="tabpanel">
+                            <div class="table-responsive">
+                                <table class="table table-sm">
+                                    <thead>
+                                        <tr>
+                                            <th>Date</th>
+                                            <th>Material Code</th>
+                                            <th>Material Name</th>
+                                            <th>Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for material in recent_materials %}
+                                        <tr>
+                                            <td>{{ material.created_at|date:"Y-m-d" }}</td>
+                                            <td>{{ material.material_code }}</td>
+                                            <td>
+                                                <a href="{% url 'inventory:material_detail' material.id %}">
+                                                    {{ material.name }}
+                                                </a>
+                                            </td>
+                                            <td>
+                                                {% if material.status == 'active' %}
+                                                <span class="badge bg-success">Active</span>
+                                                {% else %}
+                                                <span class="badge bg-secondary">{{ material.status }}</span>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        {% empty %}
+                                        <tr>
+                                            <td colspan="4" class="text-center">No materials created</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Notification Settings -->
+            <div class="card shadow">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0"><i class="fas fa-bell me-2"></i>Notification Settings</h5>
+                </div>
+                <div class="card-body">
+                    <table class="table">
+                        <tr>
+                            <th>Email Notifications:</th>
+                            <td>
+                                {% if user.profile.notification_email %}
+                                <span class="badge bg-success">Enabled</span>
+                                {% else %}
+                                <span class="badge bg-secondary">Disabled</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>SMS Notifications:</th>
+                            <td>
+                                {% if user.profile.notification_sms %}
+                                <span class="badge bg-success">Enabled</span>
+                                {% else %}
+                                <span class="badge bg-secondary">Disabled</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

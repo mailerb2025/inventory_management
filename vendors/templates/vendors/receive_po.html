@@ -1,0 +1,126 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Receive Purchase Order{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow">
+                <div class="card-header bg-success text-white">
+                    <h4 class="mb-0"><i class="fas fa-truck-loading me-2"></i>Receive Purchase Order: {{ order.po_number }}</h4>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        This will create an inbound transaction and update inventory for all items in this purchase order.
+                    </div>
+                    
+                    <h5 class="mb-3">Order Summary</h5>
+                    <table class="table table-sm">
+                        <tr>
+                            <th style="width: 150px;">Vendor:</th>
+                            <td>{{ order.vendor.name }}</td>
+                        </tr>
+                        <tr>
+                            <th>Order Date:</th>
+                            <td>{{ order.order_date|date:"Y-m-d" }}</td>
+                        </tr>
+                        <tr>
+                            <th>Expected Delivery:</th>
+                            <td>{{ order.expected_delivery|date:"Y-m-d"|default:"-" }}</td>
+                        </tr>
+                        <tr>
+                            <th>Status:</th>
+                            <td>
+                                {% if order.status == 'draft' %}
+                                    <span class="badge bg-secondary">Draft</span>
+                                {% elif order.status == 'sent' %}
+                                    <span class="badge bg-primary">Sent</span>
+                                {% elif order.status == 'confirmed' %}
+                                    <span class="badge bg-info">Confirmed</span>
+                                {% elif order.status == 'shipped' %}
+                                    <span class="badge bg-warning text-dark">Shipped</span>
+                                {% elif order.status == 'delivered' %}
+                                    <span class="badge bg-success">Delivered</span>
+                                {% elif order.status == 'cancelled' %}
+                                    <span class="badge bg-danger">Cancelled</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>Total Items:</th>
+                            <td>{{ items|length }}</td>
+                        </tr>
+                    </table>
+                    
+                    <h5 class="mb-3">Items to Receive</h5>
+                    <div class="table-responsive">
+                        <table class="table table-bordered">
+                            <thead>
+                                <tr>
+                                    <th>Material</th>
+                                    <th>Ordered Quantity</th>
+                                    <th>Unit Price</th>
+                                    <th>Line Total</th>
+                                    <th>Current Stock</th>
+                                    <th>Stock After</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in items %}
+                                <tr>
+                                    <td>{{ item.material.name }} ({{ item.material.material_code }})</td>
+                                    <td>{{ item.quantity }} {{ item.material.unit }}</td>
+                                    <td>${{ item.unit_price|floatformat:2 }}</td>
+                                    <td>${{ item.line_total|floatformat:2 }}</td>
+                                    <td>{{ item.material.current_stock }}</td>
+                                    <td class="fw-bold text-success">{{ item.material.current_stock|add:item.quantity }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                            <tfoot>
+                                <tr>
+                                    <th colspan="3" class="text-end">Subtotal:</th>
+                                    <th>${{ order.subtotal|floatformat:2 }}</th>
+                                    <th colspan="2"></th>
+                                </tr>
+                                <tr>
+                                    <th colspan="3" class="text-end">Tax (10%):</th>
+                                    <th>${{ order.tax|floatformat:2 }}</th>
+                                    <th colspan="2"></th>
+                                </tr>
+                                <tr>
+                                    <th colspan="3" class="text-end">Total:</th>
+                                    <th>${{ order.total|floatformat:2 }}</th>
+                                    <th colspan="2"></th>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                    
+                    <form method="post">
+                        {% csrf_token %}
+                        <div class="mb-3">
+                            <label for="notes" class="form-label">Receiving Notes (Optional)</label>
+                            <textarea class="form-control" id="notes" name="notes" rows="3"></textarea>
+                        </div>
+                        
+                        <hr>
+                        
+                        <div class="d-flex justify-content-between">
+                            <a href="{% url 'vendors:purchase_order_detail' order.id %}" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left me-2"></i>Back
+                            </a>
+                            <button type="submit" class="btn btn-success" onclick="return confirm('Are you sure you want to receive this purchase order? This will update inventory.')">
+                                <i class="fas fa-check-circle me-2"></i>Confirm Receipt
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

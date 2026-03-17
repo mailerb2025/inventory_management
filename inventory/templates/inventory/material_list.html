@@ -1,0 +1,236 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Materials Inventory{% endblock %}
+
+{% block content %}
+<div class="content-container">
+    <!-- Header -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4">
+        <div>
+            <h3 class="mb-1">Materials Inventory</h3>
+            <p class="text-muted mb-0">Manage and track all materials in the system</p>
+        </div>
+        <div class="mt-3 mt-sm-0">
+            <div class="btn-group">
+                <button type="button" class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown">
+                    <i class="fas fa-download me-2"></i>Export
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end">
+                    <li><a class="dropdown-item" href="{% url 'inventory:export_materials_csv' %}">
+                        <i class="fas fa-file-csv me-2 text-success"></i>CSV
+                    </a></li>
+                    <li><a class="dropdown-item" href="{% url 'inventory:export_materials_excel' %}">
+                        <i class="fas fa-file-excel me-2 text-success"></i>Excel
+                    </a></li>
+                    <li><a class="dropdown-item" href="{% url 'inventory:export_materials_pdf' %}">
+                        <i class="fas fa-file-pdf me-2 text-danger"></i>PDF
+                    </a></li>
+                </ul>
+            </div>
+            <a href="{% url 'inventory:import_materials' %}" class="btn btn-info ms-2">
+                <i class="fas fa-upload me-2"></i>Import
+            </a>
+            <a href="{% url 'inventory:material_create' %}" class="btn btn-primary ms-2">
+                <i class="fas fa-plus-circle me-2"></i>Add Material
+            </a>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="get" class="row g-3">
+                <div class="col-md-4">
+                    <label class="form-label">Search</label>
+                    <input type="text" class="form-control" name="search"
+                           placeholder="Search by name or code..."
+                           value="{{ request.GET.search|default:'' }}">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Category</label>
+                    <select class="form-select" name="category">
+                        <option value="">All Categories</option>
+                        {% for category in categories %}
+                        <option value="{{ category.id }}"
+                            {% if request.GET.category == category.id|stringformat:"s" %}selected{% endif %}>
+                            {{ category.name }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Stock Status</label>
+                    <select class="form-select" name="stock_status">
+                        <option value="">All Status</option>
+                        <option value="normal" {% if request.GET.stock_status == 'normal' %}selected{% endif %}>Normal</option>
+                        <option value="low" {% if request.GET.stock_status == 'low' %}selected{% endif %}>Low Stock</option>
+                        <option value="excess" {% if request.GET.stock_status == 'excess' %}selected{% endif %}>Excess</option>
+                    </select>
+                </div>
+                <div class="col-md-2 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="fas fa-search me-2"></i>Apply Filters
+                    </button>
+                </div>
+                {% if request.GET %}
+                <div class="col-12">
+                    <a href="{% url 'inventory:material_list' %}" class="btn btn-link text-muted">
+                        <i class="fas fa-times me-1"></i>Clear all filters
+                    </a>
+                </div>
+                {% endif %}
+            </form>
+        </div>
+    </div>
+
+    <!-- Materials Table -->
+    <div class="card">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>Code</th>
+                        <th>Material Name</th>
+                        <th>Category</th>
+                        <th>Unit</th>
+                        <th>Current Stock</th>
+                        <th>Min/Max</th>
+                        <th>Status</th>
+                        <th>Location</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for material in page_obj %}
+                    <tr>
+                        <td><span class="fw-semibold">{{ material.material_code }}</span></td>
+                        <td>{{ material.name }}</td>
+                        <td>{{ material.category.name }}</td>
+                        <td>{{ material.unit }}</td>
+                        <td>
+                            <span class="fw-semibold {% if material.current_stock <= material.minimum_stock %}text-danger
+                                                     {% elif material.current_stock >= material.maximum_stock %}text-warning
+                                                     {% else %}text-success{% endif %}">
+                                {{ material.current_stock }}
+                            </span>
+                        </td>
+                        <td>
+                            <small class="text-muted">{{ material.minimum_stock }}/{{ material.maximum_stock }}</small>
+                        </td>
+                        <td>
+                            <span class="badge badge-{{ material.get_status_color }}">
+                                {{ material.get_status_display_name }}
+                            </span>
+                        </td>
+                        <td>{{ material.location|default:"-" }}</td>
+                        <td class="text-end">
+                            <div class="btn-group btn-group-sm">
+                                <a href="{% url 'inventory:material_detail' material.id %}" class="btn btn-outline-info" title="View">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                                <a href="{% url 'inventory:material_update' material.id %}" class="btn btn-outline-primary" title="Edit">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                                <button type="button" class="btn btn-outline-danger" title="Delete"
+                                        onclick="confirmDelete('{{ material.id }}', '{{ material.name }}')">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="9" class="text-center py-5">
+                            <i class="fas fa-box-open fa-4x text-muted mb-3"></i>
+                            <h5 class="text-muted">No materials found</h5>
+                            <p class="text-muted mb-3">Get started by adding your first material</p>
+                            <a href="{% url 'inventory:material_create' %}" class="btn btn-primary">
+                                <i class="fas fa-plus-circle me-2"></i>Add Material
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        {% if page_obj.has_other_pages %}
+        <div class="card-footer">
+            <nav aria-label="Page navigation">
+                <ul class="pagination justify-content-center mb-0">
+                    {% if page_obj.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.category %}&category={{ request.GET.category }}{% endif %}{% if request.GET.stock_status %}&stock_status={{ request.GET.stock_status }}{% endif %}">
+                            <i class="fas fa-chevron-left"></i>
+                        </a>
+                    </li>
+                    {% else %}
+                    <li class="page-item disabled">
+                        <span class="page-link"><i class="fas fa-chevron-left"></i></span>
+                    </li>
+                    {% endif %}
+
+                    {% for num in page_obj.paginator.page_range %}
+                        {% if page_obj.number == num %}
+                        <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+                        {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ num }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.category %}&category={{ request.GET.category }}{% endif %}{% if request.GET.stock_status %}&stock_status={{ request.GET.stock_status }}{% endif %}">{{ num }}</a>
+                        </li>
+                        {% endif %}
+                    {% endfor %}
+
+                    {% if page_obj.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.category %}&category={{ request.GET.category }}{% endif %}{% if request.GET.stock_status %}&stock_status={{ request.GET.stock_status }}{% endif %}">
+                            <i class="fas fa-chevron-right"></i>
+                        </a>
+                    </li>
+                    {% else %}
+                    <li class="page-item disabled">
+                        <span class="page-link"><i class="fas fa-chevron-right"></i></span>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Confirm Delete</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="mb-0">Are you sure you want to delete <strong id="deleteMaterialName"></strong>?</p>
+                <p class="text-danger small mt-2">
+                    <i class="fas fa-exclamation-triangle me-1"></i>
+                    This action cannot be undone.
+                </p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form id="deleteForm" method="post" action="">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger">Delete Material</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function confirmDelete(materialId, materialName) {
+    document.getElementById('deleteMaterialName').textContent = materialName;
+    document.getElementById('deleteForm').action = `/inventory/material/${materialId}/delete/`;
+    new bootstrap.Modal(document.getElementById('deleteModal')).show();
+}
+</script>
+{% endblock %}

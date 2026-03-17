@@ -1,0 +1,133 @@
+{% load static %}
+
+<div class="bg-dark text-white vh-100 p-3" style="overflow-y: auto;">
+    <div class="text-center mb-4">
+       <!-- <i class="fas fa-cubes fa-3x text-white-50"></i> -->
+        {% load static %}
+        <img src="{% static 'img/company_logo.png' %}" class="opacity-20" alt="My logo" width="130" height="130">
+        <h6 class="text-white mt-2">IMS v2.0</h6>
+    </div>
+
+    <div class="nav flex-column nav-pills">
+        <!-- Dashboard -->
+        <a href="{% url 'accounts:dashboard' %}" class="nav-link text-white {% if request.resolver_match.url_name == 'dashboard' %}active bg-primary{% endif %}">
+            <i class="fas fa-tachometer-alt me-2"></i>
+            <span>Dashboard</span>
+        </a>
+
+        <!-- Inventory -->
+        <a href="#inventoryMenu" class="nav-link text-white" data-bs-toggle="collapse" role="button">
+            <i class="fas fa-cubes me-2"></i>
+            <span>Inventory</span>
+            <i class="fas fa-chevron-down float-end"></i>
+        </a>
+        <div class="collapse" id="inventoryMenu">
+            <a href="{% url 'inventory:material_list' %}" class="nav-link text-white ps-4 {% if request.resolver_match.url_name == 'material_list' %}active bg-primary{% endif %}">
+                <i class="fas fa-list me-2"></i>All Materials
+            </a>
+            <a href="{% url 'inventory:material_create' %}" class="nav-link text-white ps-4 {% if request.resolver_match.url_name == 'material_create' %}active bg-primary{% endif %}">
+                <i class="fas fa-plus-circle me-2"></i>Add Material
+            </a>
+            <a href="{% url 'inventory:category_list' %}" class="nav-link text-white ps-4 {% if request.resolver_match.url_name == 'category_list' %}active bg-primary{% endif %}">
+                <i class="fas fa-tags me-2"></i>Categories
+            </a>
+            <a href="{% url 'inventory:stock_alerts' %}" class="nav-link text-white ps-4 {% if request.resolver_match.url_name == 'stock_alerts' %}active bg-primary{% endif %}">
+                <i class="fas fa-exclamation-triangle me-2"></i>Stock Alerts
+            </a>
+        </div>
+
+        <!-- Transactions -->
+        <a href="#transactionMenu" class="nav-link text-white" data-bs-toggle="collapse" role="button">
+            <i class="fas fa-exchange-alt me-2"></i>
+            <span>Transactions</span>
+            <i class="fas fa-chevron-down float-end"></i>
+        </a>
+        <div class="collapse" id="transactionMenu">
+            <a href="{% url 'transactions:transaction_list' %}" class="nav-link text-white ps-4 {% if request.resolver_match.url_name == 'transaction_list' %}active bg-primary{% endif %}">
+                <i class="fas fa-list me-2"></i>All Transactions
+            </a>
+            <a href="{% url 'transactions:transaction_create' %}" class="nav-link text-white ps-4 {% if request.resolver_match.url_name == 'transaction_create' %}active bg-primary{% endif %}">
+                <i class="fas fa-plus-circle me-2"></i>New Transaction
+            </a>
+            <a href="{% url 'transactions:inbound_list' %}" class="nav-link text-white ps-4">
+                <i class="fas fa-arrow-down me-2 text-success"></i>Inbound
+            </a>
+            <a href="{% url 'transactions:outbound_list' %}" class="nav-link text-white ps-4">
+                <i class="fas fa-arrow-up me-2 text-danger"></i>Outbound
+            </a>
+        </div>
+
+        <!-- Vendors -->
+        <a href="#vendorMenu" class="nav-link text-white" data-bs-toggle="collapse" role="button">
+            <i class="fas fa-truck me-2"></i>
+            <span>Vendors</span>
+            <i class="fas fa-chevron-down float-end"></i>
+        </a>
+        <div class="collapse" id="vendorMenu">
+            <a href="{% url 'vendors:vendor_list' %}" class="nav-link text-white ps-4 {% if request.resolver_match.url_name == 'vendor_list' %}active bg-primary{% endif %}">
+                <i class="fas fa-list me-2"></i>All Vendors
+            </a>
+            <a href="{% url 'vendors:vendor_create' %}" class="nav-link text-white ps-4 {% if request.resolver_match.url_name == 'vendor_create' %}active bg-primary{% endif %}">
+                <i class="fas fa-plus-circle me-2"></i>Add Vendor
+            </a>
+            <a href="{% url 'vendors:purchase_order_list' %}" class="nav-link text-white ps-4 {% if request.resolver_match.url_name == 'purchase_order_list' %}active bg-primary{% endif %}">
+                <i class="fas fa-shopping-cart me-2"></i>Purchase Orders
+            </a>
+        </div>
+
+        <!-- Reports -->
+        <a href="#reportMenu" class="nav-link text-white" data-bs-toggle="collapse" role="button">
+            <i class="fas fa-chart-bar me-2"></i>
+            <span>Reports</span>
+            <i class="fas fa-chevron-down float-end"></i>
+        </a>
+        <div class="collapse" id="reportMenu">
+            <a href="{% url 'reports:inventory_report' %}" class="nav-link text-white ps-4 {% if request.resolver_match.url_name == 'inventory_report' %}active bg-primary{% endif %}">
+                <i class="fas fa-clipboard-list me-2"></i>Inventory Report
+            </a>
+            <a href="{% url 'reports:transaction_report' %}" class="nav-link text-white ps-4 {% if request.resolver_match.url_name == 'transaction_report' %}active bg-primary{% endif %}">
+                <i class="fas fa-history me-2"></i>Transaction Report
+            </a>
+        </div>
+
+        <!-- User Management (Admin only) -->
+        {% if user.is_superuser or user.profile.role.name == 'admin' %}
+        <a href="#userMenu" class="nav-link text-white" data-bs-toggle="collapse" role="button">
+            <i class="fas fa-users-cog me-2"></i>
+            <span>User Management</span>
+            <i class="fas fa-chevron-down float-end"></i>
+        </a>
+        <div class="collapse" id="userMenu">
+            <a href="{% url 'accounts:user_list' %}" class="nav-link text-white ps-4 {% if request.resolver_match.url_name == 'user_list' %}active bg-primary{% endif %}">
+                <i class="fas fa-users me-2"></i>All Users
+            </a>
+            <a href="{% url 'accounts:role_list' %}" class="nav-link text-white ps-4 {% if request.resolver_match.url_name == 'role_list' %}active bg-primary{% endif %}">
+                <i class="fas fa-shield-alt me-2"></i>Roles
+            </a>
+        </div>
+        {% endif %}
+    </div>
+
+    <hr class="text-white-50">
+
+    <div class="small text-white-50">
+        <i class="fas fa-database me-2"></i>Connected<br>
+        <span id="sidebar-time"></span>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    function updateTime() {
+        const now = new Date();
+        const options = {
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit'
+        };
+        document.getElementById('sidebar-time').textContent = now.toLocaleTimeString();
+    }
+    updateTime();
+    setInterval(updateTime, 1000);
+});
+</script>

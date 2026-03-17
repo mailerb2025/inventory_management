@@ -1,0 +1,275 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-md-10">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                    <h4 class="mb-0"><i class="fas fa-{% if order %}edit{% else %}plus-circle{% endif %} me-2"></i>{{ title }}</h4>
+                    {% if order %}
+                    <span class="badge bg-light text-dark">PO: {{ order.po_number }}</span>
+                    {% endif %}
+                </div>
+                <div class="card-body">
+                    <form method="post" id="poForm">
+                        {% csrf_token %}
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                {{ form.vendor|as_crispy_field }}
+                            </div>
+                            <div class="col-md-6">
+                                {{ form.expected_delivery|as_crispy_field }}
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                {{ form.status|as_crispy_field }}
+                            </div>
+                        </div>
+                        
+                        {{ form.notes|as_crispy_field }}
+                        
+                        <hr>
+                        
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h5 class="mb-0">Order Items</h5>
+                            <button type="button" class="btn btn-success btn-sm" onclick="addItem()">
+                                <i class="fas fa-plus-circle me-1"></i>Add Item
+                            </button>
+                        </div>
+                        
+                        <div id="items-container">
+                            {% if items %}
+                                {% for item in items %}
+                                <div class="item-row card mb-3">
+                                    <div class="card-body">
+                                        <div class="row">
+                                            <div class="col-md-5">
+                                                <label class="form-label fw-bold">Material</label>
+                                                <input type="hidden" name="item_id_{{ forloop.counter0 }}" value="{{ item.id }}">
+                                                <select class="form-select" name="material_{{ forloop.counter0 }}" required>
+                                                    <option value="">Select Material</option>
+                                                    {% for material in materials %}
+                                                    <option value="{{ material.id }}" {% if item.material.id == material.id %}selected{% endif %}>
+                                                        {{ material.material_code }} - {{ material.name }} (Stock: {{ material.current_stock }})
+                                                    </option>
+                                                    {% endfor %}
+                                                </select>
+                                            </div>
+                                            <div class="col-md-2">
+                                                <label class="form-label fw-bold">Quantity</label>
+                                                <input type="number" class="form-control item-quantity" name="quantity_{{ forloop.counter0 }}" 
+                                                       value="{{ item.quantity }}" min="1" step="1" required>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <label class="form-label fw-bold">Unit Price ($)</label>
+                                                <input type="number" class="form-control item-price" name="unit_price_{{ forloop.counter0 }}" 
+                                                       value="{{ item.unit_price }}" step="0.01" min="0" required>
+                                            </div>
+                                            <div class="col-md-1">
+                                                <label class="form-label fw-bold">Total</label>
+                                                <input type="text" class="form-control item-total" value="${{ item.line_total|floatformat:2 }}" readonly>
+                                            </div>
+                                            <div class="col-md-1 d-flex align-items-end">
+                                                <button type="button" class="btn btn-danger mb-2" onclick="removeItem(this)">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            {% else %}
+                                <div class="item-row card mb-3">
+                                    <div class="card-body">
+                                        <div class="row">
+                                            <div class="col-md-5">
+                                                <label class="form-label fw-bold">Material</label>
+                                                <select class="form-select" name="material_0" required>
+                                                    <option value="">Select Material</option>
+                                                    {% for material in materials %}
+                                                    <option value="{{ material.id }}">
+                                                        {{ material.material_code }} - {{ material.name }} (Stock: {{ material.current_stock }})
+                                                    </option>
+                                                    {% endfor %}
+                                                </select>
+                                            </div>
+                                            <div class="col-md-2">
+                                                <label class="form-label fw-bold">Quantity</label>
+                                                <input type="number" class="form-control item-quantity" name="quantity_0" min="1" step="1" required>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <label class="form-label fw-bold">Unit Price ($)</label>
+                                                <input type="number" class="form-control item-price" name="unit_price_0" step="0.01" min="0" required>
+                                            </div>
+                                            <div class="col-md-1">
+                                                <label class="form-label fw-bold">Total</label>
+                                                <input type="text" class="form-control item-total" value="$0.00" readonly>
+                                            </div>
+                                            <div class="col-md-1 d-flex align-items-end">
+                                                <button type="button" class="btn btn-danger mb-2" onclick="removeItem(this)">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            {% endif %}
+                        </div>
+                        
+                        <input type="hidden" name="item_count" id="item_count" value="{{ items|length|default:1 }}">
+                        
+                        <!-- Summary Section -->
+                        <div class="card mt-3 bg-light">
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-8"></div>
+                                    <div class="col-md-4">
+                                        <table class="table table-sm">
+                                            <tr>
+                                                <th>Subtotal:</th>
+                                                <td class="text-end" id="subtotal">${{ order.subtotal|default:"0.00" }}</td>
+                                            </tr>
+                                            <tr>
+                                                <th>Tax (10%):</th>
+                                                <td class="text-end" id="tax">${{ order.tax|default:"0.00" }}</td>
+                                            </tr>
+                                            <tr>
+                                                <th>Total:</th>
+                                                <td class="text-end fw-bold text-success" id="total">${{ order.total|default:"0.00" }}</td>
+                                            </tr>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <hr>
+                        
+                        <div class="d-flex justify-content-between">
+                            <a href="{% url 'vendors:purchase_order_list' %}" class="btn btn-secondary">
+                                <i class="fas fa-times me-2"></i>Cancel
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save me-2"></i>{% if order %}Update{% else %}Save{% endif %} Purchase Order
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let itemCount = {{ items|length|default:1 }};
+
+function addItem() {
+    const container = document.getElementById('items-container');
+    const template = document.querySelector('.item-row').cloneNode(true);
+    
+    let html = template.innerHTML;
+    html = html.replace(/material_\d+/g, `material_${itemCount}`);
+    html = html.replace(/quantity_\d+/g, `quantity_${itemCount}`);
+    html = html.replace(/unit_price_\d+/g, `unit_price_${itemCount}`);
+    html = html.replace(/item_id_\d+/g, `item_id_${itemCount}`);
+    template.innerHTML = html;
+    
+    template.querySelectorAll('input[type="number"]').forEach(input => {
+        input.value = '';
+    });
+    
+    template.querySelectorAll('select').forEach(select => {
+        select.selectedIndex = 0;
+    });
+    
+    const totalInput = template.querySelector('.item-total');
+    if (totalInput) {
+        totalInput.value = '$0.00';
+    }
+    
+    container.appendChild(template);
+    itemCount++;
+    document.getElementById('item_count').value = itemCount;
+    
+    attachInputListeners(template);
+    calculateTotals();
+}
+
+function removeItem(button) {
+    const rows = document.querySelectorAll('.item-row');
+    if (rows.length > 1) {
+        button.closest('.item-row').remove();
+        itemCount--;
+        document.getElementById('item_count').value = itemCount;
+        calculateTotals();
+    } else {
+        alert('At least one item is required');
+    }
+}
+
+function attachInputListeners(row) {
+    const quantityInput = row.querySelector('.item-quantity');
+    const priceInput = row.querySelector('.item-price');
+    const totalDisplay = row.querySelector('.item-total');
+    
+    if (quantityInput && priceInput && totalDisplay) {
+        const calculateLineTotal = () => {
+            const qty = parseFloat(quantityInput.value) || 0;
+            const price = parseFloat(priceInput.value) || 0;
+            const total = qty * price;
+            totalDisplay.value = '$' + total.toFixed(2);
+            calculateTotals();
+        };
+        
+        quantityInput.addEventListener('input', calculateLineTotal);
+        priceInput.addEventListener('input', calculateLineTotal);
+    }
+}
+
+function calculateTotals() {
+    let subtotal = 0;
+    const rows = document.querySelectorAll('.item-row');
+    
+    rows.forEach(row => {
+        const quantity = parseFloat(row.querySelector('.item-quantity')?.value) || 0;
+        const price = parseFloat(row.querySelector('.item-price')?.value) || 0;
+        subtotal += quantity * price;
+    });
+    
+    const tax = subtotal * 0.1;
+    const total = subtotal + tax;
+    
+    document.getElementById('subtotal').textContent = '$' + subtotal.toFixed(2);
+    document.getElementById('tax').textContent = '$' + tax.toFixed(2);
+    document.getElementById('total').textContent = '$' + total.toFixed(2);
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.item-row').forEach(row => {
+        attachInputListeners(row);
+    });
+    calculateTotals();
+});
+</script>
+
+<style>
+    .item-total {
+        background-color: #f8f9fa;
+        font-weight: bold;
+    }
+    .card {
+        border: 1px solid rgba(0,0,0,.125);
+        transition: all 0.3s ease;
+    }
+    .card:hover {
+        box-shadow: 0 0.5rem 1rem rgba(0,0,0,.15);
+    }
+</style>
+{% endblock %}

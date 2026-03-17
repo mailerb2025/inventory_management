@@ -1,0 +1,121 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0"><i class="fas fa-{% if vendor %}edit{% else %}plus-circle{% endif %} me-2"></i>{{ title }}</h4>
+                </div>
+                <div class="card-body">
+                    <form method="post">
+                        {% csrf_token %}
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                {{ form.vendor_code|as_crispy_field }}
+                            </div>
+                            <div class="col-md-6">
+                                {{ form.name|as_crispy_field }}
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                {{ form.vendor_type|as_crispy_field }}
+                            </div>
+                            <div class="col-md-6">
+                                {{ form.contact_person|as_crispy_field }}
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                {{ form.email|as_crispy_field }}
+                            </div>
+                            <div class="col-md-3">
+                                {{ form.phone|as_crispy_field }}
+                            </div>
+                            <div class="col-md-3">
+                                {{ form.mobile|as_crispy_field }}
+                            </div>
+                        </div>
+                        
+                        <h5 class="mt-4 mb-3">Address Information</h5>
+                        
+                        {{ form.address|as_crispy_field }}
+                        
+                        <div class="row">
+                            <div class="col-md-4">
+                                {{ form.city|as_crispy_field }}
+                            </div>
+                            <div class="col-md-4">
+                                {{ form.state|as_crispy_field }}
+                            </div>
+                            <div class="col-md-4">
+                                {{ form.postal_code|as_crispy_field }}
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                {{ form.country|as_crispy_field }}
+                            </div>
+                            <div class="col-md-6">
+                                {{ form.tax_id|as_crispy_field }}
+                            </div>
+                        </div>
+                        
+                        <h5 class="mt-4 mb-3">Business Information</h5>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                {{ form.payment_terms|as_crispy_field }}
+                            </div>
+                            <div class="col-md-6">
+                                {{ form.credit_limit|as_crispy_field }}
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                {{ form.rating|as_crispy_field }}
+                            </div>
+                            <div class="col-md-6">
+                                {{ form.status|as_crispy_field }}
+                            </div>
+                        </div>
+                        
+                        <div class="card mt-4 mb-3">
+                            <div class="card-header bg-info text-white">
+                                <h6 class="mb-0"><i class="fas fa-cubes me-2"></i>Materials Supplied</h6>
+                            </div>
+                            <div class="card-body">
+                                <p class="text-muted small mb-3">Select the materials that this vendor supplies. Hold Ctrl/Cmd to select multiple.</p>
+                                {{ form.materials|as_crispy_field }}
+                            </div>
+                        </div>
+                        
+                        {{ form.notes|as_crispy_field }}
+                        
+                        <hr>
+                        
+                        <div class="d-flex justify-content-between">
+                            <a href="{% url 'vendors:vendor_list' %}" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left me-2"></i>Back to List
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save me-2"></i>Save Vendor
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

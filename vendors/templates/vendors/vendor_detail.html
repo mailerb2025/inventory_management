@@ -1,0 +1,220 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ vendor.name }} - Details{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <div class="col-lg-4">
+            <!-- Vendor Info Card -->
+            <div class="card shadow mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="fas fa-info-circle me-2"></i>Vendor Information</h5>
+                </div>
+                <div class="card-body">
+                    <h4>{{ vendor.name }}</h4>
+                    <p class="text-muted">{{ vendor.vendor_code }}</p>
+                    
+                    <table class="table table-sm">
+                        <tr>
+                            <th>Type:</th>
+                            <td><span class="badge bg-info">{{ vendor.get_vendor_type_display }}</span></td>
+                        </tr>
+                        <tr>
+                            <th>Status:</th>
+                            <td>
+                                {% if vendor.status == 'active' %}
+                                    <span class="badge bg-success">Active</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">Inactive</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>Rating:</th>
+                            <td>
+                                {% for i in "12345"|make_list %}
+                                    {% if forloop.counter <= vendor.rating %}
+                                        <i class="fas fa-star text-warning"></i>
+                                    {% else %}
+                                        <i class="far fa-star text-warning"></i>
+                                    {% endif %}
+                                {% endfor %}
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>Payment Terms:</th>
+                            <td>{{ vendor.payment_terms }}</td>
+                        </tr>
+                        <tr>
+                            <th>Credit Limit:</th>
+                            <td>${{ vendor.credit_limit|floatformat:2 }}</td>
+                        </tr>
+                    </table>
+                    
+                    <h6 class="mt-3">Contact Information</h6>
+                    <table class="table table-sm">
+                        <tr>
+                            <th>Contact Person:</th>
+                            <td>{{ vendor.contact_person }}</td>
+                        </tr>
+                        <tr>
+                            <th>Email:</th>
+                            <td><a href="mailto:{{ vendor.email }}">{{ vendor.email }}</a></td>
+                        </tr>
+                        <tr>
+                            <th>Phone:</th>
+                            <td>{{ vendor.phone }}</td>
+                        </tr>
+                        {% if vendor.mobile %}
+                        <tr>
+                            <th>Mobile:</th>
+                            <td>{{ vendor.mobile }}</td>
+                        </tr>
+                        {% endif %}
+                    </table>
+                    
+                    <h6 class="mt-3">Address</h6>
+                    <address>
+                        {{ vendor.address }}<br>
+                        {{ vendor.city }}{% if vendor.state %}, {{ vendor.state }}{% endif %} {{ vendor.postal_code }}<br>
+                        {{ vendor.country }}
+                    </address>
+                    
+                    {% if vendor.tax_id %}
+                    <p><strong>Tax ID:</strong> {{ vendor.tax_id }}</p>
+                    {% endif %}
+                    
+                    {% if vendor.notes %}
+                    <div class="mt-3">
+                        <h6>Notes:</h6>
+                        <p class="bg-light p-2 rounded">{{ vendor.notes|linebreaks }}</p>
+                    </div>
+                    {% endif %}
+                    
+                    <div class="d-grid gap-2 mt-3">
+                        <a href="{% url 'vendors:vendor_update' vendor.id %}" class="btn btn-primary">
+                            <i class="fas fa-edit me-2"></i>Edit Vendor
+                        </a>
+                        <a href="{% url 'vendors:purchase_order_create' %}?vendor={{ vendor.id }}" class="btn btn-success">
+                            <i class="fas fa-shopping-cart me-2"></i>Create PO
+                        </a>
+                        <a href="{% url 'vendors:vendor_list' %}" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left me-2"></i>Back to List
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-8">
+            <!-- Materials Supplied -->
+            <div class="card shadow mb-4">
+                <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="fas fa-cubes me-2"></i>Materials Supplied</h5>
+                    <span class="badge bg-light text-dark">{{ materials|length }} material(s)</span>
+                </div>
+                <div class="card-body">
+                    {% if materials %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Material Code</th>
+                                        <th>Material Name</th>
+                                        <th>Category</th>
+                                        <th>Unit</th>
+                                        <th>Current Stock</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for material in materials %}
+                                    <tr>
+                                        <td><strong>{{ material.material_code }}</strong></td>
+                                        <td>
+                                            <a href="{% url 'inventory:material_detail' material.id %}">
+                                                {{ material.name }}
+                                            </a>
+                                        </td>
+                                        <td>{{ material.category.name }}</td>
+                                        <td>{{ material.unit }}</td>
+                                        <td>
+                                            <span class="{% if material.current_stock <= material.minimum_stock %}text-danger fw-bold{% elif material.current_stock >= material.maximum_stock %}text-warning{% else %}text-success{% endif %}">
+                                                {{ material.current_stock }}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <p class="text-muted text-center py-3">No materials associated with this vendor.</p>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <!-- Recent Purchase Orders -->
+            <div class="card shadow">
+                <div class="card-header bg-warning text-dark d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class="fas fa-shopping-cart me-2"></i>Recent Purchase Orders</h5>
+                    <a href="{% url 'vendors:purchase_order_create' %}?vendor={{ vendor.id }}" class="btn btn-sm btn-dark">
+                        <i class="fas fa-plus-circle me-1"></i>New PO
+                    </a>
+                </div>
+                <div class="card-body">
+                    {% if purchase_orders %}
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>PO Number</th>
+                                        <th>Order Date</th>
+                                        <th>Expected Delivery</th>
+                                        <th>Status</th>
+                                        <th>Total</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for po in purchase_orders %}
+                                    <tr>
+                                        <td><strong>{{ po.po_number }}</strong></td>
+                                        <td>{{ po.order_date|date:"Y-m-d" }}</td>
+                                        <td>{{ po.expected_delivery|date:"Y-m-d"|default:"-" }}</td>
+                                        <td>
+                                            {% if po.status == 'draft' %}
+                                                <span class="badge bg-secondary">Draft</span>
+                                            {% elif po.status == 'sent' %}
+                                                <span class="badge bg-primary">Sent</span>
+                                            {% elif po.status == 'confirmed' %}
+                                                <span class="badge bg-info">Confirmed</span>
+                                            {% elif po.status == 'shipped' %}
+                                                <span class="badge bg-warning text-dark">Shipped</span>
+                                            {% elif po.status == 'delivered' %}
+                                                <span class="badge bg-success">Delivered</span>
+                                            {% elif po.status == 'cancelled' %}
+                                                <span class="badge bg-danger">Cancelled</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>${{ po.total|floatformat:2 }}</td>
+                                        <td>
+                                            <a href="{% url 'vendors:purchase_order_detail' po.id %}" class="btn btn-sm btn-info">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% else %}
+                        <p class="text-muted text-center py-3">No purchase orders found for this vendor.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

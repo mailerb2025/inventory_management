@@ -1,0 +1,380 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load inventory_filters %}
+
+{% block title %}Transaction {{ transaction.transaction_number }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .status-badge {
+        cursor: pointer;
+        transition: all 0.2s;
+        display: inline-block;
+        min-width: 80px;
+        text-align: center;
+    }
+    
+    .status-badge:hover {
+        transform: scale(1.05);
+        box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+    }
+    
+    .status-badge.override {
+        border: 2px solid #ffc107;
+    }
+    
+    .status-dropdown {
+        position: absolute;
+        background: white;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        z-index: 1000;
+        min-width: 150px;
+        display: none;
+    }
+    
+    .status-dropdown.show {
+        display: block;
+    }
+    
+    .status-option {
+        padding: 8px 12px;
+        cursor: pointer;
+        transition: background 0.2s;
+    }
+    
+    .status-option:hover {
+        background: #f8f9fa;
+    }
+    
+    .status-option.selected {
+        background: #e9ecef;
+        font-weight: bold;
+    }
+    
+    .override-indicator {
+        font-size: 0.7rem;
+        margin-left: 4px;
+        color: #ffc107;
+    }
+    
+    .stock-info {
+        font-size: 0.85rem;
+        color: #6c757d;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header bg-info text-white d-flex justify-content-between align-items-center">
+                    <h4 class="mb-0"><i class="fas fa-receipt me-2"></i>Transaction Details</h4>
+                    <div>
+                        <a href="{% url 'transactions:transaction_edit' transaction.id %}" class="btn btn-light btn-sm me-2">
+                            <i class="fas fa-edit me-1"></i>Edit
+                        </a>
+                        {% if transaction.transaction_type != 'adjustment' %}
+                        <a href="{% url 'transactions:reverse_transaction' transaction.id %}" class="btn btn-warning btn-sm me-2">
+                            <i class="fas fa-undo-alt me-1"></i>Reverse
+                        </a>
+                        {% endif %}
+                        <a href="{% url 'transactions:add_transaction_item' transaction.id %}" class="btn btn-success btn-sm me-2">
+                            <i class="fas fa-plus-circle me-1"></i>Add Item
+                        </a>
+                        <button class="btn btn-light btn-sm me-2" onclick="window.print()">
+                            <i class="fas fa-print me-1"></i>Print
+                        </button>
+                        <a href="{% url 'transactions:transaction_list' %}" class="btn btn-light btn-sm">
+                            <i class="fas fa-arrow-left me-1"></i>Back
+                        </a>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <h5>Transaction Information</h5>
+                            <table class="table table-sm">
+                                <tr>
+                                    <th style="width: 150px;">Transaction #:</th>
+                                    <td><strong>{{ transaction.transaction_number }}</strong></td>
+                                </tr>
+                                <tr>
+                                    <th>Type:</th>
+                                    <td>
+                                        {% if transaction.transaction_type == 'inbound' %}
+                                            <span class="badge bg-success">INBOUND</span>
+                                        {% elif transaction.transaction_type == 'outbound' %}
+                                            <span class="badge bg-danger">OUTBOUND</span>
+                                        {% elif transaction.transaction_type == 'return' %}
+                                            <span class="badge bg-warning text-dark">RETURN</span>
+                                        {% elif transaction.transaction_type == 'adjustment' %}
+                                            <span class="badge bg-info">ADJUSTMENT</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <th>Date:</th>
+                                    <td>{{ transaction.transaction_date|date:"Y-m-d H:i:s" }}</td>
+                                </tr>
+                                <tr>
+                                    <th>Reference #:</th>
+                                    <td>{{ transaction.reference_number|default:"-" }}</td>
+                                </tr>
+                                <tr>
+                                    <th>Created By:</th>
+                                    <td>{{ transaction.created_by.get_full_name|default:transaction.created_by.username|default:"System" }}</td>
+                                </tr>
+                                <tr>
+                                    <th>Created At:</th>
+                                    <td>{{ transaction.created_at|date:"Y-m-d H:i:s" }}</td>
+                                </tr>
+                            </table>
+                        </div>
+                        <div class="col-md-6">
+                            <h5>Summary</h5>
+                            <table class="table table-sm">
+                                <tr>
+                                    <th style="width: 150px;">Total Items:</th>
+                                    <td><span class="badge bg-primary">{{ items|length }}</span></td>
+                                </tr>
+                                <tr>
+                                    <th>Total Quantity:</th>
+                                    <td><strong>{{ items|length }}</strong></td>
+                                </tr>
+                                <tr>
+                                    <th>Total Value:</th>
+                                    <td><strong class="text-success">${{ items|length|add:0|floatformat:2 }}</strong></td>
+                                </tr>
+                            </table>
+                            
+                            {% if transaction.notes %}
+                            <div class="mt-3">
+                                <h6>Notes:</h6>
+                                <p class="bg-light p-2 rounded">{{ transaction.notes|linebreaks }}</p>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <h5 class="mb-3">Transaction Items</h5>
+                    <div class="table-responsive">
+                        <table class="table table-bordered">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>#</th>
+                                    <th>Material Code</th>
+                                    <th>Material Name</th>
+                                    <th>Quantity</th>
+                                    <th>Unit Price</th>
+                                    <th>Line Total</th>
+                                    <th>Stock Before</th>
+                                    <th>Stock After</th>
+                                    <th>Alert Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in items %}
+                                <tr>
+                                    <td>{{ forloop.counter }}</td>
+                                    <td>{{ item.material.material_code }}</td>
+                                    <td>
+                                        <a href="{% url 'inventory:material_detail' item.material.id %}">
+                                            {{ item.material.name }}
+                                        </a>
+                                    </td>
+                                    <td class="fw-bold 
+                                        {% if transaction.transaction_type == 'inbound' %}text-success
+                                        {% elif transaction.transaction_type == 'outbound' %}text-danger
+                                        {% endif %}">
+                                        {{ item.quantity }} {{ item.material.unit }}
+                                    </td>
+                                    <td>${{ item.unit_price|floatformat:2 }}</td>
+                                    <td>${{ item.line_total|floatformat:2 }}</td>
+                                    <td>{{ item.stock_before }}</td>
+                                    <td>{{ item.stock_after }}</td>
+                                    <td>
+                                        <div class="status-container position-relative">
+                                            {% with alert=material_alerts|get_item:item.material.id %}
+                                            <span class="badge bg-{{ alert.status_color }} status-badge {% if alert.has_override %}override{% endif %}" 
+                                                  data-material-id="{{ item.material.id }}"
+                                                  data-current-status="{{ alert.status }}"
+                                                  onclick="toggleStatusDropdown(this, event)">
+                                                {{ alert.status_display }}
+                                                {% if alert.has_override %}
+                                                <i class="fas fa-pencil-alt override-indicator" title="Manually overridden"></i>
+                                                {% endif %}
+                                            </span>
+                                            <div class="stock-info">
+                                                Current: {{ alert.current_stock }} | 
+                                                Min: {{ alert.min_stock }} | 
+                                                Max: {{ alert.max_stock }}
+                                            </div>
+                                            
+                                            <div class="status-dropdown" id="dropdown-{{ item.material.id }}">
+                                                <div class="status-option normal {% if alert.status == 'normal' %}selected{% endif %}" 
+                                                     onclick="updateStatus({{ item.material.id }}, 'normal', event)">
+                                                    <i class="fas fa-circle text-success me-2"></i>Normal
+                                                </div>
+                                                <div class="status-option low {% if alert.status == 'low' %}selected{% endif %}" 
+                                                     onclick="updateStatus({{ item.material.id }}, 'low', event)">
+                                                    <i class="fas fa-circle text-danger me-2"></i>Low Stock
+                                                </div>
+                                                <div class="status-option excess {% if alert.status == 'excess' %}selected{% endif %}" 
+                                                     onclick="updateStatus({{ item.material.id }}, 'excess', event)">
+                                                    <i class="fas fa-circle text-warning me-2"></i>Excess
+                                                </div>
+                                                <div class="dropdown-divider"></div>
+                                                <div class="status-option" onclick="updateStatus({{ item.material.id }}, '', event)">
+                                                    <i class="fas fa-undo me-2"></i>Reset to Auto
+                                                </div>
+                                            </div>
+                                            {% endwith %}
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="9" class="text-center py-4">
+                                        <i class="fas fa-box-open fa-3x text-muted mb-3"></i>
+                                        <p class="text-muted">No items in this transaction</p>
+                                        <a href="{% url 'transactions:add_transaction_item' transaction.id %}" class="btn btn-success">
+                                            <i class="fas fa-plus-circle me-2"></i>Add First Item
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Success Toast -->
+<div class="toast-container position-fixed bottom-0 end-0 p-3">
+    <div id="successToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
+        <div class="toast-header bg-success text-white">
+            <i class="fas fa-check-circle me-2"></i>
+            <strong class="me-auto">Success</strong>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast"></button>
+        </div>
+        <div class="toast-body" id="toastMessage">
+            Status updated successfully
+        </div>
+    </div>
+</div>
+
+<script>
+let currentOpenDropdown = null;
+
+document.addEventListener('click', function(event) {
+    if (!event.target.closest('.status-container')) {
+        if (currentOpenDropdown) {
+            currentOpenDropdown.classList.remove('show');
+            currentOpenDropdown = null;
+        }
+    }
+});
+
+function toggleStatusDropdown(element, event) {
+    event.stopPropagation();
+    const materialId = element.dataset.materialId;
+    const dropdown = document.getElementById(`dropdown-${materialId}`);
+    
+    if (currentOpenDropdown && currentOpenDropdown !== dropdown) {
+        currentOpenDropdown.classList.remove('show');
+    }
+    
+    dropdown.classList.toggle('show');
+    currentOpenDropdown = dropdown.classList.contains('show') ? dropdown : null;
+}
+
+function updateStatus(materialId, status, event) {
+    event.stopPropagation();
+    
+    const badges = document.querySelectorAll(`.status-badge[data-material-id="${materialId}"]`);
+    
+    badges.forEach(badge => {
+        badge.dataset.originalHtml = badge.innerHTML;
+        badge.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+    });
+    
+    fetch('{% url "transactions:update_alert_status" %}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': '{{ csrf_token }}'
+        },
+        body: JSON.stringify({
+            material_id: materialId,
+            status: status
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            badges.forEach(badge => {
+                badge.className = `badge bg-${data.status_color} status-badge`;
+                if (data.has_override) {
+                    badge.classList.add('override');
+                    badge.innerHTML = `${data.status_display} <i class="fas fa-pencil-alt override-indicator" title="Manually overridden"></i>`;
+                } else {
+                    badge.classList.remove('override');
+                    badge.innerHTML = data.status_display;
+                }
+            });
+            
+            const dropdown = document.getElementById(`dropdown-${materialId}`);
+            if (dropdown) {
+                dropdown.querySelectorAll('.status-option').forEach(opt => {
+                    opt.classList.remove('selected');
+                });
+                if (status) {
+                    const selectedOpt = dropdown.querySelector(`.status-option.${status}`);
+                    if (selectedOpt) selectedOpt.classList.add('selected');
+                }
+            }
+            
+            showToast('Status updated successfully');
+            
+            if (currentOpenDropdown) {
+                currentOpenDropdown.classList.remove('show');
+                currentOpenDropdown = null;
+            }
+        } else {
+            alert('Error: ' + data.error);
+            badges.forEach(badge => {
+                badge.innerHTML = badge.dataset.originalHtml;
+            });
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('An error occurred while updating status');
+        badges.forEach(badge => {
+            badge.innerHTML = badge.dataset.originalHtml;
+        });
+    });
+}
+
+function showToast(message) {
+    const toastEl = document.getElementById('successToast');
+    document.getElementById('toastMessage').textContent = message;
+    const toast = new bootstrap.Toast(toastEl);
+    toast.show();
+}
+
+document.addEventListener('keydown', function(event) {
+    if (event.key === 'Escape' && currentOpenDropdown) {
+        currentOpenDropdown.classList.remove('show');
+        currentOpenDropdown = null;
+    }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,250 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}Add Item to Transaction{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow">
+                <div class="card-header bg-{% if transaction.transaction_type == 'inbound' %}success{% else %}danger{% endif %} text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-{% if transaction.transaction_type == 'inbound' %}arrow-down{% else %}arrow-up{% endif %} me-2"></i>
+                        Add Item to {{ transaction.get_transaction_type_display|title }} Transaction
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info mb-4">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <strong>Transaction:</strong> {{ transaction.transaction_number }} 
+                        ({{ transaction.get_transaction_type_display }})
+                        <br>
+                        <small>Date: {{ transaction.transaction_date|date:"Y-m-d H:i" }}</small>
+                    </div>
+                    
+                    <!-- Stock data from server -->
+                    <script>
+                        const stockData = {{ stock_data|safe }};
+                        const transactionType = '{{ transaction.transaction_type }}';
+                    </script>
+                    
+                    <form method="post" id="itemForm">
+                        {% csrf_token %}
+                        
+                        <div class="row">
+                            <div class="col-md-12">
+                                {{ form.material|as_crispy_field }}
+                            </div>
+                        </div>
+                        
+                        <!-- Current Stock Display (for outbound only) -->
+                        {% if transaction.transaction_type == 'outbound' %}
+                        <div class="alert alert-info" id="currentStockDisplay" style="display: none;">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span><strong>Current Stock:</strong> <span id="currentStockValue"></span> <span id="stockUnit"></span></span>
+                                <span class="badge bg-primary" id="stockStatus"></span>
+                            </div>
+                        </div>
+                        {% endif %}
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                {{ form.quantity|as_crispy_field }}
+                                <div id="stockAfterDisplay" class="mt-1 small"></div>
+                            </div>
+                            <div class="col-md-6">
+                                {{ form.unit_price|as_crispy_field }}
+                                {% if transaction.transaction_type == 'outbound' %}
+                                <small class="text-muted">
+                                    <i class="fas fa-lock me-1"></i>Price auto-filled from material cost
+                                </small>
+                                {% else %}
+                                <small class="text-muted">
+                                    <i class="fas fa-pencil-alt me-1"></i>Enter the purchase price
+                                </small>
+                                {% endif %}
+                            </div>
+                        </div>
+                        
+                        <!-- Stock Alert (for outbound) -->
+                        <div class="alert alert-warning mt-3" id="stockAlert" style="display: none;">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            <span id="stockMessage"></span>
+                        </div>
+                        
+                        <!-- Success Message (for valid outbound) -->
+                        <div class="alert alert-success mt-3" id="stockSuccess" style="display: none;">
+                            <i class="fas fa-check-circle me-2"></i>
+                            <span id="successMessage">Stock available! You can proceed.</span>
+                        </div>
+                        
+                        <!-- Current Items Summary -->
+                        {% if transaction.items.count > 0 %}
+                        <div class="card mt-4 bg-light">
+                            <div class="card-header">
+                                <h6 class="mb-0">Current Items ({{ transaction.items.count }})</h6>
+                            </div>
+                            <div class="card-body p-2">
+                                <div class="table-responsive">
+                                    <table class="table table-sm mb-0">
+                                        <thead>
+                                            <tr>
+                                                <th>Material</th>
+                                                <th>Quantity</th>
+                                                <th>Line Total</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for item in transaction.items.all %}
+                                            <tr>
+                                                <td>{{ item.material.name }}</td>
+                                                <td>{{ item.quantity }}</td>
+                                                <td>${{ item.line_total|floatformat:2 }}</td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+                        
+                        <hr>
+                        
+                        <div class="d-flex justify-content-between">
+                            <a href="{% url 'transactions:transaction_edit' transaction.id %}" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left me-2"></i>Back to Transaction
+                            </a>
+                            <button type="submit" class="btn btn-{% if transaction.transaction_type == 'inbound' %}success{% else %}danger{% endif %}" id="submitBtn">
+                                <i class="fas fa-plus-circle me-2"></i>Add Item
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const materialSelect = document.getElementById('id_material');
+    const quantityInput = document.getElementById('id_quantity');
+    const priceInput = document.getElementById('id_unit_price');
+    const submitBtn = document.getElementById('submitBtn');
+    
+    const currentStockDisplay = document.getElementById('currentStockDisplay');
+    const currentStockValue = document.getElementById('currentStockValue');
+    const stockUnit = document.getElementById('stockUnit');
+    const stockStatus = document.getElementById('stockStatus');
+    const stockAlert = document.getElementById('stockAlert');
+    const stockMessage = document.getElementById('stockMessage');
+    const stockSuccess = document.getElementById('stockSuccess');
+    const stockAfterDisplay = document.getElementById('stockAfterDisplay');
+    
+    function updateMaterialInfo() {
+        const materialId = materialSelect.value;
+        const material = stockData.find(m => m.id == materialId);
+        
+        if (material) {
+            priceInput.value = material.unit_cost;
+            
+            if (transactionType === 'outbound') {
+                priceInput.disabled = true;
+                priceInput.classList.add('bg-light');
+                priceInput.style.cursor = 'not-allowed';
+                
+                currentStockDisplay.style.display = 'block';
+                currentStockValue.textContent = material.current_stock;
+                stockUnit.textContent = material.unit;
+                
+                if (material.current_stock <= 0) {
+                    stockStatus.textContent = 'Out of Stock';
+                    stockStatus.className = 'badge bg-danger';
+                } else if (material.current_stock <= 10) {
+                    stockStatus.textContent = 'Critical';
+                    stockStatus.className = 'badge bg-warning text-dark';
+                } else {
+                    stockStatus.textContent = 'In Stock';
+                    stockStatus.className = 'badge bg-success';
+                }
+                
+                validateOutboundStock(material);
+            } else {
+                priceInput.disabled = false;
+                priceInput.classList.remove('bg-light');
+                priceInput.style.cursor = 'text';
+                
+                if (currentStockDisplay) currentStockDisplay.style.display = 'none';
+                if (stockAlert) stockAlert.style.display = 'none';
+                if (stockSuccess) stockSuccess.style.display = 'none';
+                if (stockAfterDisplay) stockAfterDisplay.innerHTML = '';
+                
+                submitBtn.disabled = false;
+            }
+        }
+    }
+    
+    function validateOutboundStock(material) {
+        const quantity = parseInt(quantityInput.value) || 0;
+        
+        if (quantity > 0) {
+            if (quantity > material.current_stock) {
+                stockAlert.style.display = 'block';
+                stockMessage.textContent = `Insufficient stock! Available: ${material.current_stock} ${material.unit}`;
+                stockSuccess.style.display = 'none';
+                submitBtn.disabled = true;
+                
+                stockAfterDisplay.innerHTML = `<span class="text-danger">
+                    <i class="fas fa-exclamation-circle me-1"></i>
+                    Stock after: ${material.current_stock - quantity} ${material.unit} (insufficient)
+                </span>`;
+            } else {
+                stockAlert.style.display = 'none';
+                stockSuccess.style.display = 'block';
+                document.getElementById('successMessage').textContent = `Stock available! ${quantity} ${material.unit} will be issued.`;
+                submitBtn.disabled = false;
+                
+                const stockAfter = material.current_stock - quantity;
+                let stockAfterClass = 'text-success';
+                let stockAfterIcon = 'fa-check-circle';
+                
+                if (stockAfter <= material.reorder_point) {
+                    stockAfterClass = 'text-warning';
+                    stockAfterIcon = 'fa-exclamation-triangle';
+                }
+                
+                stockAfterDisplay.innerHTML = `<span class="${stockAfterClass}">
+                    <i class="fas ${stockAfterIcon} me-1"></i>
+                    Stock after: ${stockAfter} ${material.unit}
+                    ${stockAfter <= material.reorder_point ? ' (below reorder point)' : ''}
+                </span>`;
+            }
+        } else {
+            stockAlert.style.display = 'none';
+            stockSuccess.style.display = 'none';
+            submitBtn.disabled = false;
+            stockAfterDisplay.innerHTML = '';
+        }
+    }
+    
+    materialSelect.addEventListener('change', function() {
+        updateMaterialInfo();
+        quantityInput.value = '';
+    });
+    
+    quantityInput.addEventListener('input', function() {
+        const materialId = materialSelect.value;
+        if (materialId && transactionType === 'outbound') {
+            const material = stockData.find(m => m.id == materialId);
+            if (material) validateOutboundStock(material);
+        }
+    });
+    
+    if (materialSelect.value) {
+        updateMaterialInfo();
+    }
+});
+</script>
+{% endblock %}

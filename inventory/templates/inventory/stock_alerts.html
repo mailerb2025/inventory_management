@@ -1,0 +1,104 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Stock Alerts{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow mb-4">
+                <div class="card-header bg-warning text-dark">
+                    <h4 class="mb-0"><i class="fas fa-exclamation-triangle me-2"></i>Stock Alerts</h4>
+                </div>
+                <div class="card-body">
+                    <!-- Pending Alerts -->
+                    <div class="card mb-4">
+                        <div class="card-header bg-danger text-white">
+                            <h5 class="mb-0">Pending Alerts ({{ pending_alerts|length }})</h5>
+                        </div>
+                        <div class="card-body">
+                            {% if pending_alerts %}
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>Alert Date</th>
+                                            <th>Material</th>
+                                            <th>Category</th>
+                                            <th>Current Stock</th>
+                                            <th>Reorder Point</th>
+                                            <th>Status</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for alert in pending_alerts %}
+                                        <tr>
+                                            <td>{{ alert.alert_date|date:"Y-m-d H:i" }}</td>
+                                            <td>
+                                                <a href="{% url 'inventory:material_detail' alert.material.id %}">
+                                                    {{ alert.material.name }}
+                                                </a>
+                                            </td>
+                                            <td>{{ alert.material.category.name }}</td>
+                                            <td class="text-danger fw-bold">{{ alert.current_stock }}</td>
+                                            <td>{{ alert.reorder_point }}</td>
+                                            <td><span class="badge bg-danger">Pending</span></td>
+                                            <td>
+                                                <a href="{% url 'vendors:purchase_order_create' %}?material={{ alert.material.id }}" 
+                                                   class="btn btn-sm btn-primary">
+                                                    <i class="fas fa-shopping-cart"></i> Order
+                                                </a>
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                            {% else %}
+                            <p class="text-muted text-center py-3">No pending alerts</p>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Resolved Alerts -->
+                    {% if resolved_alerts %}
+                    <div class="card">
+                        <div class="card-header bg-success text-white">
+                            <h5 class="mb-0">Recently Resolved</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-sm">
+                                    <thead>
+                                        <tr>
+                                            <th>Alert Date</th>
+                                            <th>Resolved Date</th>
+                                            <th>Material</th>
+                                            <th>Stock</th>
+                                            <th>Resolved By</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for alert in resolved_alerts %}
+                                        <tr>
+                                            <td>{{ alert.alert_date|date:"Y-m-d H:i" }}</td>
+                                            <td>{{ alert.resolved_date|date:"Y-m-d H:i" }}</td>
+                                            <td>{{ alert.material.name }}</td>
+                                            <td>{{ alert.current_stock }}</td>
+                                            <td>{{ alert.resolved_by.username|default:"System" }}</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,104 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}Add Item to Purchase Order{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0"><i class="fas fa-plus-circle me-2"></i>Add Item to Purchase Order</h5>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info mb-4">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <strong>Purchase Order:</strong> {{ order.po_number }}
+                        <br>
+                        <strong>Vendor:</strong> {{ order.vendor.name }}
+                        <br>
+                        <strong>Status:</strong> 
+                        <span class="badge 
+                            {% if order.status == 'draft' %}bg-secondary
+                            {% elif order.status == 'sent' %}bg-primary
+                            {% elif order.status == 'confirmed' %}bg-info
+                            {% elif order.status == 'shipped' %}bg-warning text-dark
+                            {% elif order.status == 'delivered' %}bg-success
+                            {% elif order.status == 'cancelled' %}bg-danger
+                            {% endif %}">
+                            {{ order.get_status_display }}
+                        </span>
+                    </div>
+                    
+                    <!-- Current Items Summary -->
+                    {% if order.items.count > 0 %}
+                    <div class="card mb-4 bg-light">
+                        <div class="card-header">
+                            <h6 class="mb-0">Current Items ({{ order.items.count }})</h6>
+                        </div>
+                        <div class="card-body p-2">
+                            <div class="table-responsive">
+                                <table class="table table-sm mb-0">
+                                    <thead>
+                                        <tr>
+                                            <th>Material</th>
+                                            <th>Quantity</th>
+                                            <th>Unit Price</th>
+                                            <th>Line Total</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for item in order.items.all %}
+                                        <tr>
+                                            <td>{{ item.material.name }}</td>
+                                            <td>{{ item.quantity }}</td>
+                                            <td>${{ item.unit_price|floatformat:2 }}</td>
+                                            <td>${{ item.line_total|floatformat:2 }}</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                    
+                    <form method="post">
+                        {% csrf_token %}
+                        {{ form|crispy }}
+                        
+                        <hr>
+                        
+                        <div class="d-flex justify-content-between">
+                            <a href="{% url 'vendors:purchase_order_edit' order.id %}" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left me-2"></i>Back
+                            </a>
+                            <button type="submit" class="btn btn-success">
+                                <i class="fas fa-plus-circle me-2"></i>Add Item
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const materialSelect = document.getElementById('id_material');
+    const quantityInput = document.getElementById('id_quantity');
+    
+    function updateUnitPrice() {
+        const materialId = materialSelect.value;
+        if (materialId) {
+            // You can add AJAX here to get the material's current cost
+            // For now, we'll leave it empty
+        }
+    }
+    
+    materialSelect.addEventListener('change', updateUnitPrice);
+});
+</script>
+{% endblock %}

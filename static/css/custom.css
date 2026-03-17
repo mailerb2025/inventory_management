@@ -1,0 +1,226 @@
+/* ===== Core Styles ===== */
+:root {
+    --primary-color: #4361ee;
+    --success-color: #06d6a0;
+    --warning-color: #ffb703;
+    --danger-color: #e63946;
+    --info-color: #4895ef;
+}
+
+body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    background-color: #f8f9fa;
+    min-height: 100vh;
+}
+
+/* ===== Sidebar Styles ===== */
+#sidebar-wrapper {
+    min-height: calc(100vh - 56px);
+    background: linear-gradient(180deg, #1a2639 0%, #2a3a4e 100%);
+}
+
+.sidebar .nav-link {
+    color: rgba(255, 255, 255, 0.8);
+    padding: 0.75rem 1rem;
+    border-radius: 0;
+    transition: all 0.2s;
+}
+
+.sidebar .nav-link:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+    color: white;
+}
+
+.sidebar .nav-link.active {
+    background-color: var(--primary-color) !important;
+    color: white;
+}
+
+.sidebar .nav-link i {
+    width: 20px;
+    text-align: center;
+}
+
+/* ===== Card Styles ===== */
+.card {
+    border: none;
+    border-radius: 10px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+    transition: transform 0.2s, box-shadow 0.2s;
+    margin-bottom: 1.5rem;
+}
+
+.card:hover {
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+}
+
+.card-header {
+    background-color: white;
+    border-bottom: 1px solid #e9ecef;
+    padding: 1rem 1.25rem;
+    font-weight: 600;
+}
+
+/* ===== Stat Cards ===== */
+.stat-card {
+    padding: 1.5rem;
+    border-radius: 10px;
+    color: white;
+    position: relative;
+    overflow: hidden;
+}
+
+.stat-card.primary { background: linear-gradient(135deg, #4361ee, #3a56d4); }
+.stat-card.success { background: linear-gradient(135deg, #06d6a0, #05b586); }
+.stat-card.warning { background: linear-gradient(135deg, #ffb703, #e0a102); }
+.stat-card.danger { background: linear-gradient(135deg, #e63946, #c92a36); }
+.stat-card.info { background: linear-gradient(135deg, #4895ef, #3a7bc8); }
+
+.stat-card .stat-value {
+    font-size: 2rem;
+    font-weight: 700;
+    margin-bottom: 0.25rem;
+}
+
+.stat-card .stat-label {
+    font-size: 0.85rem;
+    opacity: 0.9;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+/* ===== Table Styles ===== */
+.table th {
+    background-color: #f8f9fa;
+    color: #495057;
+    font-weight: 600;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    border-bottom: 2px solid #dee2e6;
+}
+
+.table td {
+    vertical-align: middle;
+}
+
+/* ===== Button Styles ===== */
+.btn {
+    border-radius: 6px;
+    font-weight: 500;
+    padding: 0.5rem 1rem;
+}
+
+.btn-primary {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+}
+
+.btn-primary:hover {
+    background-color: #3a56d4;
+    border-color: #3a56d4;
+}
+
+/* ===== Form Styles ===== */
+.form-control, .form-select {
+    border-radius: 6px;
+    border: 1px solid #dee2e6;
+    padding: 0.5rem 0.75rem;
+}
+
+.form-control:focus, .form-select:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 0.2rem rgba(67, 97, 238, 0.25);
+}
+
+/* ===== Badge Styles ===== */
+.badge {
+    padding: 0.4rem 0.6rem;
+    font-weight: 500;
+    border-radius: 30px;
+}
+
+/* ===== Alert Styles ===== */
+.alert {
+    border-radius: 8px;
+    border: none;
+    padding: 1rem 1.25rem;
+}
+
+.alert-success {
+    background-color: #d1fae5;
+    color: #0b5e42;
+}
+
+.alert-danger {
+    background-color: #ffe6e8;
+    color: #a11d2a;
+}
+
+.alert-warning {
+    background-color: #fff4e0;
+    color: #8a6300;
+}
+
+.alert-info {
+    background-color: #e3f0ff;
+    color: #1a4972;
+}
+
+/* ===== Chart Container ===== */
+.chart-container {
+    position: relative;
+    height: 300px;
+    width: 100%;
+}
+
+/* ===== Responsive Utilities ===== */
+@media (max-width: 768px) {
+    #sidebar-wrapper {
+        min-height: auto;
+        margin-bottom: 1rem;
+    }
+
+    .stat-card .stat-value {
+        font-size: 1.5rem;
+    }
+
+    .table {
+        font-size: 0.9rem;
+    }
+
+    .btn {
+        padding: 0.4rem 0.8rem;
+        font-size: 0.9rem;
+    }
+}
+
+@media (max-width: 576px) {
+    h1 { font-size: 1.8rem; }
+    h2 { font-size: 1.6rem; }
+    h3 { font-size: 1.4rem; }
+
+    .card-header {
+        padding: 0.75rem 1rem;
+    }
+
+    .stat-card {
+        padding: 1rem;
+    }
+
+    .stat-card .stat-value {
+        font-size: 1.3rem;
+    }
+}
+
+/* ===== Print Styles ===== */
+@media print {
+    #sidebar-wrapper, .navbar, .btn, footer {
+        display: none !important;
+    }
+
+    #main-content {
+        width: 100% !important;
+        margin: 0 !important;
+    }
+}

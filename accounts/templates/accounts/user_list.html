@@ -1,0 +1,186 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}User Management{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                    <h4 class="mb-0"><i class="fas fa-users me-2"></i>User Management</h4>
+                    <a href="{% url 'accounts:user_create' %}" class="btn btn-light">
+                        <i class="fas fa-user-plus me-2"></i>Add New User
+                    </a>
+                </div>
+                <div class="card-body">
+                    <!-- Filters -->
+                    <form method="get" action="{% url 'accounts:user_list' %}" class="row mb-3">
+                        <div class="col-md-4">
+                            <input type="text" class="form-control" name="search" 
+                                   placeholder="Search users..." value="{{ request.GET.search|default:'' }}">
+                        </div>
+                        <div class="col-md-2">
+                            <select class="form-select" name="role">
+                                <option value="">All Roles</option>
+                                {% for role in roles %}
+                                <option value="{{ role.name }}" 
+                                    {% if request.GET.role == role.name %}selected{% endif %}>
+                                    {{ role.get_name_display }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <select class="form-select" name="status">
+                                <option value="">All Status</option>
+                                <option value="active" {% if request.GET.status == 'active' %}selected{% endif %}>Active</option>
+                                <option value="inactive" {% if request.GET.status == 'inactive' %}selected{% endif %}>Inactive</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <button type="submit" class="btn btn-primary w-100">
+                                <i class="fas fa-search me-2"></i>Filter
+                            </button>
+                        </div>
+                        <div class="col-md-2">
+                            <a href="{% url 'accounts:role_list' %}" class="btn btn-info w-100">
+                                <i class="fas fa-shield-alt me-2"></i>Roles
+                            </a>
+                        </div>
+                        {% if request.GET %}
+                        <div class="col-12 mt-2">
+                            <a href="{% url 'accounts:user_list' %}" class="btn btn-secondary btn-sm">
+                                <i class="fas fa-times me-2"></i>Clear All Filters
+                            </a>
+                        </div>
+                        {% endif %}
+                    </form>
+
+                    <!-- Users Table -->
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>User</th>
+                                    <th>Contact</th>
+                                    <th>Role</th>
+                                    <th>Department</th>
+                                    <th>Last Login</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for user in users %}
+                                <tr>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            {% if user.profile.avatar %}
+                                            <img src="{{ user.profile.avatar.url }}" alt="{{ user.username }}" 
+                                                 class="rounded-circle me-2" width="40" height="40">
+                                            {% else %}
+                                            <div class="bg-secondary rounded-circle me-2 d-flex align-items-center justify-content-center" 
+                                                 style="width: 40px; height: 40px;">
+                                                <i class="fas fa-user text-white"></i>
+                                            </div>
+                                            {% endif %}
+                                            <div>
+                                                <strong>{{ user.get_full_name|default:user.username }}</strong><br>
+                                                <small class="text-muted">@{{ user.username }}</small>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        {{ user.email }}<br>
+                                        <small class="text-muted">{{ user.profile.phone_number|default:"No phone" }}</small>
+                                    </td>
+                                    <td>
+                                        {% if user.profile.role %}
+                                        <span class="badge 
+                                            {% if user.profile.role.name == 'admin' %}bg-danger
+                                            {% elif user.profile.role.name == 'manager' %}bg-warning text-dark
+                                            {% elif user.profile.role.name == 'staff' %}bg-info
+                                            {% else %}bg-secondary{% endif %}">
+                                            {{ user.profile.role.get_name_display }}
+                                        </span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ user.profile.department|default:"-" }}</td>
+                                    <td>{{ user.last_login|date:"Y-m-d H:i"|default:"Never" }}</td>
+                                    <td>
+                                        {% if user.is_active %}
+                                        <span class="badge bg-success">Active</span>
+                                        {% else %}
+                                        <span class="badge bg-danger">Inactive</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm">
+                                            <a href="{% url 'accounts:user_detail' user.id %}" class="btn btn-info" title="View">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                            <a href="{% url 'accounts:user_update' user.id %}" class="btn btn-primary" title="Edit">
+                                                <i class="fas fa-edit"></i>
+                                            </a>
+                                            <a href="{% url 'accounts:user_toggle_active' user.id %}" class="btn btn-warning" 
+                                               title="{% if user.is_active %}Deactivate{% else %}Activate{% endif %}">
+                                                <i class="fas fa-{% if user.is_active %}ban{% else %}check{% endif %}"></i>
+                                            </a>
+                                            <button type="button" class="btn btn-danger" title="Delete" 
+                                                    onclick="confirmDelete('{{ user.id }}', '{{ user.username }}')"
+                                                    {% if user == request.user %}disabled{% endif %}>
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="7" class="text-center py-4">
+                                        <i class="fas fa-users fa-3x text-muted mb-3"></i>
+                                        <p class="text-muted">No users found</p>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title"><i class="fas fa-exclamation-triangle me-2"></i>Confirm Delete</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete user <strong id="userName"></strong>?</p>
+                <p class="text-danger small">This action cannot be undone!</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form id="deleteForm" method="post" action="">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger">Delete User</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function confirmDelete(userId, userName) {
+    document.getElementById('userName').textContent = userName;
+    document.getElementById('deleteForm').action = `/accounts/user/${userId}/delete/`;
+    new bootstrap.Modal(document.getElementById('deleteModal')).show();
+}
+</script>
+{% endblock %}

@@ -1,0 +1,183 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-md-10">
+            <div class="card shadow">
+                <div class="card-header bg-info text-white d-flex justify-content-between align-items-center">
+                    <h4 class="mb-0"><i class="fas fa-exchange-alt me-2"></i>{{ title }}</h4>
+                    {% if transaction %}
+                    <span class="badge bg-light text-dark">{{ transaction.transaction_number }}</span>
+                    {% endif %}
+                </div>
+                <div class="card-body">
+                    <form method="post" id="transactionForm">
+                        {% csrf_token %}
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                {{ form.transaction_type|as_crispy_field }}
+                            </div>
+                            <div class="col-md-6">
+                                {{ form.reference_number|as_crispy_field }}
+                            </div>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                {{ form.transaction_date|as_crispy_field }}
+                            </div>
+                        </div>
+                        
+                        {{ form.notes|as_crispy_field }}
+                        
+                        <hr>
+                        
+                        {% if transaction %}
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h5 class="mb-0">Transaction Items</h5>
+                            <a href="{% url 'transactions:add_transaction_item' transaction.id %}" class="btn btn-success btn-sm">
+                                <i class="fas fa-plus-circle me-1"></i>Add New Item
+                            </a>
+                        </div>
+                        
+                        {% if items %}
+                        <div class="table-responsive mb-3">
+                            <table class="table table-bordered table-hover">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Material</th>
+                                        <th>Quantity</th>
+                                        <th>Unit Price</th>
+                                        <th>Line Total</th>
+                                        <th>Stock Before</th>
+                                        <th>Stock After</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="items-tbody">
+                                    {% for item in items %}
+                                    <tr>
+                                        <td>
+                                            <strong>{{ item.material.name }}</strong><br>
+                                            <small class="text-muted">{{ item.material.material_code }}</small>
+                                        </td>
+                                        <td class="fw-bold 
+                                            {% if transaction.transaction_type == 'inbound' %}text-success
+                                            {% elif transaction.transaction_type == 'outbound' %}text-danger
+                                            {% endif %}">
+                                            {{ item.quantity }} {{ item.material.unit }}
+                                        </td>
+                                        <td>${{ item.unit_price|floatformat:2 }}</td>
+                                        <td>${{ item.line_total|floatformat:2 }}</td>
+                                        <td>{{ item.stock_before }}</td>
+                                        <td>{{ item.stock_after }}</td>
+                                        <td>
+                                            <button type="button" class="btn btn-sm btn-danger" onclick="deleteItem('{{ item.id }}')">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                                <tfoot>
+                                    <tr>
+                                        <th colspan="3" class="text-end">Total:</th>
+                                        <th id="total-amount">${{ items|length|add:0|floatformat:2 }}</th>
+                                        <th colspan="3"></th>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                        {% else %}
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle me-2"></i>
+                            No items added yet. Click the "Add New Item" button to add items to this transaction.
+                        </div>
+                        {% endif %}
+                        {% endif %}
+                        
+                        <hr>
+                        
+                        <div class="d-flex justify-content-between">
+                            <a href="{% url 'transactions:transaction_list' %}" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left me-2"></i>Cancel
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save me-2"></i>{% if transaction %}Update{% else %}Save{% endif %} Transaction
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Item Modal -->
+<div class="modal fade" id="deleteItemModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title"><i class="fas fa-exclamation-triangle me-2"></i>Delete Item</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete this item?</p>
+                <p class="text-danger small">This action cannot be undone. The stock will be adjusted back.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form id="deleteItemForm" method="post" action="">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger">Delete Item</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function deleteItem(itemId) {
+    if (confirm('Are you sure you want to delete this item? The stock will be adjusted back.')) {
+        var form = document.createElement('form');
+        form.method = 'POST';
+        form.action = `/transactions/item/${itemId}/delete/`;
+        
+        var csrfInput = document.createElement('input');
+        csrfInput.type = 'hidden';
+        csrfInput.name = 'csrfmiddlewaretoken';
+        csrfInput.value = '{{ csrf_token }}';
+        form.appendChild(csrfInput);
+        
+        document.body.appendChild(form);
+        form.submit();
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    calculateTotal();
+});
+
+function calculateTotal() {
+    var total = 0;
+    var rows = document.querySelectorAll('#items-tbody tr');
+    rows.forEach(function(row) {
+        var cells = row.querySelectorAll('td');
+        if (cells.length >= 4) {
+            var lineTotal = parseFloat(cells[3].textContent.replace('$', '')) || 0;
+            total += lineTotal;
+        }
+    });
+    
+    var totalElement = document.getElementById('total-amount');
+    if (totalElement) {
+        totalElement.textContent = '$' + total.toFixed(2);
+    }
+}
+</script>
+{% endblock %}

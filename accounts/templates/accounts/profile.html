@@ -1,0 +1,156 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}My Profile{% endblock %}
+
+{% block content %}
+<div class="content-container">
+    <h3 class="mb-4">My Profile</h3>
+
+    <div class="row g-4">
+        <div class="col-md-4">
+            <div class="card text-center">
+                <div class="card-body">
+                    <div class="mb-3">
+                        {% if user.profile.avatar %}
+                        <img src="{{ user.profile.avatar.url }}" alt="{{ user.username }}"
+                             class="rounded-circle img-fluid" style="width: 120px; height: 120px; object-fit: cover;">
+                        {% else %}
+                        <div class="bg-primary bg-opacity-10 rounded-circle d-inline-flex align-items-center justify-content-center"
+                             style="width: 120px; height: 120px;">
+                            <i class="fas fa-user fa-3x text-primary"></i>
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <h5 class="mb-1">{{ user.get_full_name|default:user.username }}</h5>
+                    <p class="text-muted small mb-3">@{{ user.username }}</p>
+
+                    {% if user.profile.role %}
+                    <span class="badge badge-info mb-3">{{ user.profile.role.get_name_display }}</span>
+                    {% endif %}
+
+                    <div class="text-start mt-3">
+                        <div class="d-flex justify-content-between mb-2">
+                            <span class="text-muted">Member since:</span>
+                            <span class="fw-semibold">{{ user.date_joined|date:"M d, Y" }}</span>
+                        </div>
+                        <div class="d-flex justify-content-between mb-2">
+                            <span class="text-muted">Last login:</span>
+                            <span class="fw-semibold">{{ user.last_login|date:"M d, Y H:i" }}</span>
+                        </div>
+                        <div class="d-flex justify-content-between">
+                            <span class="text-muted">Login count:</span>
+                            <span class="fw-semibold">{{ user.profile.login_count }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h6 class="mb-0">Edit Profile</h6>
+                </div>
+                <div class="card-body">
+                    <form method="post" enctype="multipart/form-data">
+                        {% csrf_token %}
+
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label">First Name</label>
+                                <input type="text" class="form-control" name="first_name"
+                                       value="{{ user.first_name }}" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Last Name</label>
+                                <input type="text" class="form-control" name="last_name"
+                                       value="{{ user.last_name }}" required>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Email Address</label>
+                            <input type="email" class="form-control" name="email"
+                                   value="{{ user.email }}" required>
+                        </div>
+
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Phone Number</label>
+                                <input type="text" class="form-control" name="phone_number"
+                                       value="{{ user.profile.phone_number }}">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Department</label>
+                                <input type="text" class="form-control" name="department"
+                                       value="{{ user.profile.department }}">
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Profile Picture</label>
+                            <input type="file" class="form-control" name="avatar" accept="image/*">
+                            <div class="form-text">Leave empty to keep current picture</div>
+                        </div>
+
+                        <hr class="my-4">
+
+                        <h6 class="mb-3">Notification Preferences</h6>
+
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <div class="form-check">
+                                    <input type="checkbox" class="form-check-input" name="notification_email"
+                                           id="emailNotif" {% if user.profile.notification_email %}checked{% endif %}>
+                                    <label class="form-check-label" for="emailNotif">
+                                        Email Notifications
+                                    </label>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-check">
+                                    <input type="checkbox" class="form-check-input" name="notification_sms"
+                                           id="smsNotif" {% if user.profile.notification_sms %}checked{% endif %}>
+                                    <label class="form-check-label" for="smsNotif">
+                                        SMS Notifications
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <hr class="my-4">
+
+                        <div class="d-flex justify-content-between">
+                            <a href="{% url 'accounts:dashboard' %}" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left me-2"></i>Back to Dashboard
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save me-2"></i>Save Changes
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h6 class="mb-0">Security</h6>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="mb-1">Password</h6>
+                            <p class="text-muted small mb-0">Last changed: Never</p>
+                        </div>
+                        <a href="{% url 'accounts:change_password' %}" class="btn btn-outline-primary">
+                            <i class="fas fa-key me-2"></i>Change Password
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

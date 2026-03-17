@@ -1,0 +1,117 @@
+{% extends 'base.html' %}
+{% load crispy_forms_tags %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                    <h4 class="mb-0"><i class="fas fa-{% if role %}edit{% else %}plus-circle{% endif %} me-2"></i>{{ title }}</h4>
+                    {% if role and role.is_default %}
+                    <span class="badge bg-warning text-dark">Default Role</span>
+                    {% endif %}
+                </div>
+                <div class="card-body">
+                    {% if role and role.is_default %}
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        <strong>This is a default system role.</strong> 
+                        You can modify permissions, but the role name cannot be changed.
+                    </div>
+                    {% endif %}
+                    
+                    <form method="post">
+                        {% csrf_token %}
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                {{ form.name|as_crispy_field }}
+                                {% if role and role.is_default %}
+                                <small class="text-muted">Default role names cannot be changed.</small>
+                                {% endif %}
+                            </div>
+                        </div>
+                        
+                        {{ form.description|as_crispy_field }}
+                        
+                        <hr>
+                        
+                        <h5 class="mb-3">Inventory Permissions</h5>
+                        <div class="row">
+                            <div class="col-md-3">{{ form.can_view_inventory|as_crispy_field }}</div>
+                            <div class="col-md-3">{{ form.can_create_inventory|as_crispy_field }}</div>
+                            <div class="col-md-3">{{ form.can_edit_inventory|as_crispy_field }}</div>
+                            <div class="col-md-3">{{ form.can_delete_inventory|as_crispy_field }}</div>
+                        </div>
+                        
+                        <hr>
+                        
+                        <h5 class="mb-3">Transaction Permissions</h5>
+                        <div class="row">
+                            <div class="col-md-2">{{ form.can_view_transactions|as_crispy_field }}</div>
+                            <div class="col-md-2">{{ form.can_create_transactions|as_crispy_field }}</div>
+                            <div class="col-md-2">{{ form.can_edit_transactions|as_crispy_field }}</div>
+                            <div class="col-md-2">{{ form.can_delete_transactions|as_crispy_field }}</div>
+                            <div class="col-md-2">{{ form.can_approve_transactions|as_crispy_field }}</div>
+                        </div>
+                        
+                        <hr>
+                        
+                        <h5 class="mb-3">Vendor Permissions</h5>
+                        <div class="row">
+                            <div class="col-md-3">{{ form.can_view_vendors|as_crispy_field }}</div>
+                            <div class="col-md-3">{{ form.can_create_vendors|as_crispy_field }}</div>
+                            <div class="col-md-3">{{ form.can_edit_vendors|as_crispy_field }}</div>
+                            <div class="col-md-3">{{ form.can_delete_vendors|as_crispy_field }}</div>
+                        </div>
+                        
+                        <hr>
+                        
+                        <h5 class="mb-3">Report Permissions</h5>
+                        <div class="row">
+                            <div class="col-md-6">{{ form.can_view_reports|as_crispy_field }}</div>
+                            <div class="col-md-6">{{ form.can_export_reports|as_crispy_field }}</div>
+                        </div>
+                        
+                        <hr>
+                        
+                        <h5 class="mb-3">User Management Permissions</h5>
+                        <div class="row">
+                            <div class="col-md-3">{{ form.can_view_users|as_crispy_field }}</div>
+                            <div class="col-md-3">{{ form.can_create_users|as_crispy_field }}</div>
+                            <div class="col-md-3">{{ form.can_edit_users|as_crispy_field }}</div>
+                            <div class="col-md-3">{{ form.can_delete_users|as_crispy_field }}</div>
+                        </div>
+                        
+                        <hr>
+                        
+                        <div class="d-flex justify-content-between">
+                            <a href="{% url 'accounts:role_list' %}" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left me-2"></i>Back
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save me-2"></i>Save Role
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if role and role.is_default %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const nameField = document.getElementById('id_name');
+    if (nameField) {
+        nameField.disabled = true;
+        nameField.classList.add('bg-light');
+    }
+});
+</script>
+{% endif %}
+{% endblock %}

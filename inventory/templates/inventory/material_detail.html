@@ -1,0 +1,229 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ material.name }} - Details{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <div class="col-lg-4">
+            <!-- Material Info Card -->
+            <div class="card shadow mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="fas fa-info-circle me-2"></i>Material Information</h5>
+                </div>
+                <div class="card-body">
+                    {% if material.image %}
+                    <div class="text-center mb-3">
+                        <img src="{{ material.image.url }}" alt="{{ material.name }}" class="img-fluid rounded" style="max-height: 200px;">
+                    </div>
+                    {% endif %}
+                    
+                    <table class="table table-sm">
+                        <tr>
+                            <th>Material Code:</th>
+                            <td><strong>{{ material.material_code }}</strong></td>
+                        </tr>
+                        <tr>
+                            <th>Name:</th>
+                            <td>{{ material.name }}</td>
+                        </tr>
+                        <tr>
+                            <th>Category:</th>
+                            <td><span class="badge bg-info">{{ material.category.name }}</span></td>
+                        </tr>
+                        <tr>
+                            <th>Unit:</th>
+                            <td>{{ material.unit }}</td>
+                        </tr>
+                        <tr>
+                            <th>Specification:</th>
+                            <td>{{ material.specification|default:"-" }}</td>
+                        </tr>
+                        <tr>
+                            <th>Location:</th>
+                            <td>{{ material.location|default:"-" }}</td>
+                        </tr>
+                        <tr>
+                            <th>Status:</th>
+                            <td>
+                                {% if material.status == 'active' %}
+                                    <span class="badge bg-success">Active</span>
+                                {% elif material.status == 'inactive' %}
+                                    <span class="badge bg-secondary">Inactive</span>
+                                {% else %}
+                                    <span class="badge bg-danger">Discontinued</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+            
+            <!-- Stock Status Card -->
+            <div class="card shadow mb-4">
+                <div class="card-header d-flex justify-content-between align-items-center
+                    {% if material.get_display_status == 'low' %}bg-danger
+                    {% elif material.get_display_status == 'excess' %}bg-warning
+                    {% else %}bg-success{% endif %} text-white">
+                    <h5 class="mb-0"><i class="fas fa-chart-line me-2"></i>Stock Status</h5>
+                    {% if material.has_override %}
+                    <span class="badge bg-light text-dark">
+                        <i class="fas fa-pencil-alt me-1"></i>Manually Overridden
+                    </span>
+                    {% endif %}
+                </div>
+                <div class="card-body">
+                    <div class="text-center mb-3">
+                        <h2 class="display-4 
+                            {% if material.current_stock <= material.minimum_stock %}text-danger
+                            {% elif material.current_stock >= material.maximum_stock %}text-warning
+                            {% else %}text-success{% endif %}">
+                            {{ material.current_stock }}
+                        </h2>
+                        <p class="text-muted">Current Stock ({{ material.unit }})</p>
+                    </div>
+                    
+                    <div class="progress mb-3" style="height: 25px;">
+                        <div class="progress-bar 
+                            {% if material.current_stock <= material.minimum_stock %}bg-danger
+                            {% elif material.current_stock >= material.maximum_stock %}bg-warning
+                            {% else %}bg-success{% endif %}" 
+                            role="progressbar" 
+                            style="width: {{ stock_percentage }}%">
+                            {{ stock_percentage|floatformat:1 }}%
+                        </div>
+                    </div>
+                    
+                    {% if material.has_override %}
+                    <div class="alert alert-info mt-2">
+                        <small>
+                            <i class="fas fa-info-circle me-1"></i>
+                            Calculated status: 
+                            <span class="badge bg-{{ material.get_status_color }}">
+                                {{ material.get_calculated_status|title }}
+                            </span>
+                            <br>
+                            <span class="text-muted">Current stock: {{ material.current_stock }} | 
+                            Min: {{ material.minimum_stock }} | Max: {{ material.maximum_stock }}</span>
+                        </small>
+                    </div>
+                    {% endif %}
+                    
+                    <table class="table table-sm">
+                        <tr>
+                            <th>Minimum Stock:</th>
+                            <td class="text-danger">{{ material.minimum_stock }}</td>
+                        </tr>
+                        <tr>
+                            <th>Maximum Stock:</th>
+                            <td class="text-warning">{{ material.maximum_stock }}</td>
+                        </tr>
+                        <tr>
+                            <th>Reorder Point:</th>
+                            <td class="text-info">{{ material.reorder_point }}</td>
+                        </tr>
+                        <tr>
+                            <th>Unit Cost:</th>
+                            <td>${{ material.unit_cost|floatformat:2 }}</td>
+                        </tr>
+                        <tr>
+                            <th>Total Value:</th>
+                            <td><strong>${{ material.stock_value|floatformat:2 }}</strong></td>
+                        </tr>
+                    </table>
+                    
+                    {% if material.current_stock <= material.reorder_point %}
+                    <div class="alert alert-warning mt-3">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        This item needs reordering!
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-lg-8">
+            <!-- Actions -->
+            <div class="card shadow mb-4">
+                <div class="card-body">
+                    <div class="btn-group w-100">
+                        <a href="{% url 'inventory:material_update' material.id %}" class="btn btn-primary">
+                            <i class="fas fa-edit me-2"></i>Edit Material
+                        </a>
+                        <a href="{% url 'transactions:transaction_create' %}?material={{ material.id }}" class="btn btn-success">
+                            <i class="fas fa-exchange-alt me-2"></i>New Transaction
+                        </a>
+                        <a href="{% url 'vendors:vendor_list' %}?material={{ material.id }}" class="btn btn-info">
+                            <i class="fas fa-truck me-2"></i>Find Vendors
+                        </a>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Recent Transactions -->
+            <div class="card shadow mb-4">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0"><i class="fas fa-history me-2"></i>Recent Transactions</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Transaction #</th>
+                                    <th>Type</th>
+                                    <th>Quantity</th>
+                                    <th>Before</th>
+                                    <th>After</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in transactions %}
+                                <tr>
+                                    <td>{{ item.transaction.transaction_date|date:"Y-m-d H:i" }}</td>
+                                    <td>
+                                        <a href="{% url 'transactions:transaction_detail' item.transaction.id %}">
+                                            {{ item.transaction.transaction_number }}
+                                        </a>
+                                    </td>
+                                    <td>
+                                        {% if item.transaction.transaction_type == 'inbound' %}
+                                            <span class="badge bg-success">IN</span>
+                                        {% else %}
+                                            <span class="badge bg-danger">OUT</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="fw-bold">{{ item.quantity }}</td>
+                                    <td>{{ item.stock_before }}</td>
+                                    <td>{{ item.stock_after }}</td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="6" class="text-center py-3">
+                                        <p class="text-muted">No transactions found</p>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Description -->
+            {% if material.description %}
+            <div class="card shadow">
+                <div class="card-header bg-secondary text-white">
+                    <h5 class="mb-0"><i class="fas fa-align-left me-2"></i>Description</h5>
+                </div>
+                <div class="card-body">
+                    <p class="mb-0">{{ material.description|linebreaks }}</p>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
