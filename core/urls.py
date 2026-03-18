@@ -13,7 +13,7 @@ urlpatterns = [
     path('transactions/', include('transactions.urls')),
     path('vendors/', include('vendors.urls')),
     path('reports/', include('reports.urls')),
-    # path('', include('accounts.urls')),  # Redirect root to accounts
+    path('', include('accounts.urls')),  # Redirect root to accounts
 ]
 
 if settings.DEBUG:
